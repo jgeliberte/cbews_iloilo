@@ -11,10 +11,10 @@ from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_socketio import SocketIO
 from flask_jwt_extended import JWTManager
+from pprint import pprint
 from config import APP_CONFIG
 BCRYPT = Bcrypt()
 JWT = JWTManager()
-LOGIN_MANAGER = LoginManager()
 SOCKETIO = SocketIO()
 
 def create_app():
@@ -25,9 +25,6 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True)
 
     app.config.from_pyfile("config.py")
-
-    LOGIN_MANAGER.init_app(app)
-    LOGIN_MANAGER.login_message = "You must be logged in to access this page."
 
     JWT.init_app(app)
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=30)
