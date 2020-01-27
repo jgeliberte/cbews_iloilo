@@ -37,4 +37,7 @@ def create_app():
     from src.api.users.user import USER_BLUEPRINT
     app.register_blueprint(USER_BLUEPRINT, url_prefix="/api")
 
+    from src.api.risk_assessment.cav import CAPACITY_AND_VULNERABILITY_BLUEPRINT
+    app.register_blueprint(CAPACITY_AND_VULNERABILITY_BLUEPRINT, url_prefix="/api")
+
     return app

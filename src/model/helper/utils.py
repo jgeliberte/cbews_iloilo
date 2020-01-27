@@ -78,3 +78,11 @@ class DatabaseConnection():
             # self.error_logger.store_error_log(self.exception_to_string(err))
             print("MySQLdb OP Error:", err)
             time.sleep(20)
+    
+    def db_switcher(site_id):
+        schema = ""
+        if site_id == 29:
+            schema = "marirong_db"
+        else:
+            schema = "umingan_db"
+        return schema

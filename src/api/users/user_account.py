@@ -11,7 +11,7 @@ def signin():
     username, password = credentials.values()
     account_details = Users.fetch_account(username)
     if len(account_details) != 0:
-        (account_id, user_id, privilege_id, v_username, v_password, salt) = account_details[0]
+        (user_id, account_id, privilege_id, profile_id, v_username, v_password, salt, firstname, lastname, site_id) = account_details[0]
         password_hashed = str(hashlib.sha512(str(password+salt).encode("utf-8")).hexdigest())
 
         if v_password == password_hashed:
@@ -22,6 +22,10 @@ def signin():
                     "account_id": account_id,
                     "user_id": user_id,
                     "privilege_id": privilege_id,
+                    "profile_id": profile_id,
+                    "site_id": site_id,
+                    "firstname": firstname,
+                    "lastname": lastname
                 }
             }
         else:
@@ -43,6 +47,7 @@ def signout():
 @USER_ACCOUNT_BLUEPRINT.route("/accounts/signup", methods=["POST"])
 def signup():
     credentials = request.get_json()
+    print(credentials)
     is_existing = Users.account_exists(credentials['username'])[0][0]
     if is_existing == 0:
         status = Users.create_user_account(credentials)
