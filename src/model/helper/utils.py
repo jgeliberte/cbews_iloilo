@@ -81,7 +81,7 @@ class DatabaseConnection():
     
     def db_switcher(site_id):
         schema = ""
-        if site_id == 29:
+        if int(site_id) == 29:
             schema = "marirong_db"
         else:
             schema = "umingan_db"
