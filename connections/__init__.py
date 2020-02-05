@@ -43,4 +43,7 @@ def create_app():
     from src.api.risk_assessment.cra import COMMUNITY_RISK_ASSESSMENT_BLUEPRINT
     app.register_blueprint(COMMUNITY_RISK_ASSESSMENT_BLUEPRINT, url_prefix="/api")
 
+    from src.api.ground_data.surficial_markers import SURFICIAL_MARKERS_BLUEPRINT
+    app.register_blueprint(SURFICIAL_MARKERS_BLUEPRINT, url_prefix="/api")
+
     return app
