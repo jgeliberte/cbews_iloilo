@@ -7,7 +7,6 @@ USER_BLUEPRINT = Blueprint("user_blueprint", __name__)
 @USER_BLUEPRINT.route("/users/create", methods=["POST"])
 def create():
     data = request.get_json()
-    print(data)
     return jsonify({"status": "create"})
 
 @USER_BLUEPRINT.route("/users/fetch/<user_id>", methods=["GET"])

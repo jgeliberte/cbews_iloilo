@@ -11,10 +11,10 @@ from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_socketio import SocketIO
 from flask_jwt_extended import JWTManager
+from pprint import pprint
 from config import APP_CONFIG
 BCRYPT = Bcrypt()
 JWT = JWTManager()
-LOGIN_MANAGER = LoginManager()
 SOCKETIO = SocketIO()
 
 def create_app():
@@ -26,9 +26,6 @@ def create_app():
 
     app.config.from_pyfile("config.py")
 
-    LOGIN_MANAGER.init_app(app)
-    LOGIN_MANAGER.login_message = "You must be logged in to access this page."
-
     JWT.init_app(app)
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(minutes=30)
     CORS(app)
@@ -39,5 +36,14 @@ def create_app():
 
     from src.api.users.user import USER_BLUEPRINT
     app.register_blueprint(USER_BLUEPRINT, url_prefix="/api")
+
+    from src.api.risk_assessment.cav import CAPACITY_AND_VULNERABILITY_BLUEPRINT
+    app.register_blueprint(CAPACITY_AND_VULNERABILITY_BLUEPRINT, url_prefix="/api")
+
+    from src.api.risk_assessment.cra import COMMUNITY_RISK_ASSESSMENT_BLUEPRINT
+    app.register_blueprint(COMMUNITY_RISK_ASSESSMENT_BLUEPRINT, url_prefix="/api")
+
+    from src.api.ground_data.surficial_markers import SURFICIAL_MARKERS_BLUEPRINT
+    app.register_blueprint(SURFICIAL_MARKERS_BLUEPRINT, url_prefix="/api")
 
     return app
