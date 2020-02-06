@@ -20,3 +20,13 @@ class GroundData():
         schema = DB.db_switcher(site_id)
         result = DB.db_read(query, schema)
         return result
+
+    def update_surficial_marker_values(mo_id, data):
+        print(mo_id)
+        print(data)
+
+    def fetch_surficial_mo_id(ts, site_id):
+        query = f'SELECT mo_id FROM senslopedb.marker_observations WHERE ts = "{ts}" and site_id = "{site_id}" limit 1;'
+        schema = DB.db_switcher(site_id)
+        result = DB.db_read(query, schema)
+        return result

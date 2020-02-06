@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from connections import SOCKETIO
 import sys
+from datetime import datetime as dt
 from src.model.ground_data import GroundData
 
 SURFICIAL_MARKERS_BLUEPRINT = Blueprint("surficial_markers_blueprint", __name__)
@@ -42,5 +43,31 @@ def fetch(site_id):
         surficial = {
             "status": False,
             "message": f"Failed to fetch surficial data. Error: {err}"
+        }
+    return jsonify(surficial)
+
+
+@SURFICIAL_MARKERS_BLUEPRINT.route("/ground_data/surficial_markers/modify", methods=["PATCH"])
+def modify():
+    try:
+        data = request.get_json()
+        current_ts = str(dt.today())
+        data['new_ts'] = str(dt.strptime(data['new_ts'], '%Y-%m-%d %H:%M:%S'))
+        data['ref_ts'] = str(dt.strptime(data['ref_ts'], '%Y-%m-%d %H:%M:%S'))
+
+        if data['new_ts'] > current_ts:
+            surficial = {
+                "status": False,
+                "message": "Failed to modify surficial data. Data timestamp out of bounce."
+            }
+        else:
+            mo_ret_val = GroundData.fetch_surficial_mo_id(data['ref_ts'], data['site_id'])
+            status = GroundData.update_surficial_marker_values(mo_ret_val[0][0], data)
+
+        surficial = {"status": True}
+    except Exception as err:
+        surficial = {
+            "status": False,
+            "message": f"Failed to modify surficial data. Error: {err}"
         }
     return jsonify(surficial)
