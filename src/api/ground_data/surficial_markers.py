@@ -50,6 +50,7 @@ def fetch(site_id):
 @SURFICIAL_MARKERS_BLUEPRINT.route("/ground_data/surficial_markers/modify", methods=["PATCH"])
 def modify():
     try:
+        marker_values_update = True
         data = request.get_json()
         current_ts = str(dt.today())
         data['new_ts'] = str(dt.strptime(data['new_ts'], '%Y-%m-%d %H:%M:%S'))
@@ -62,9 +63,24 @@ def modify():
             }
         else:
             mo_ret_val = GroundData.fetch_surficial_mo_id(data['ref_ts'], data['site_id'])
-            status = GroundData.update_surficial_marker_values(mo_ret_val[0][0], data)
-
-        surficial = {"status": True}
+            marker_ids = dict(map(reversed, GroundData.fetch_marker_ids(mo_ret_val[0][0])))
+            for x in data['marker_values']:
+                status = GroundData.update_surficial_marker_values(mo_ret_val[0][0], marker_ids[x], data['marker_values'][x])
+                if status == None:
+                    marker_values_update = False
+            if marker_values_update == True:
+                status = GroundData.update_surficial_marker_observation(mo_ret_val[0][0], 
+                        data['new_ts'], data['weather'], data['observer'], data['site_id'])
+                if status != None:
+                    surficial = {
+                        "status": True,
+                        "message": "Successfull modification for surficial data."
+                    }
+            else:
+                surficial = {
+                    "status": False,
+                    "message": f"Failed to modify surficial data. Error: updating marker values"
+                }
     except Exception as err:
         surficial = {
             "status": False,
