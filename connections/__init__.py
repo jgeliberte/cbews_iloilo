@@ -46,4 +46,7 @@ def create_app():
     from src.api.ground_data.surficial_markers import SURFICIAL_MARKERS_BLUEPRINT
     app.register_blueprint(SURFICIAL_MARKERS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.ground_data.manifestation_of_movements import MANIFESTATION_OF_MOVEMENTS_BLUEPRINT
+    app.register_blueprint(MANIFESTATION_OF_MOVEMENTS_BLUEPRINT, url_prefix="/api")
+
     return app
