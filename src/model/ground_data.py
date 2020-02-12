@@ -104,3 +104,36 @@ class GroundData():
         finally:
             return result
 
+    def fetch_moms(site_id):
+        try:
+            query = "SELECT feature_id, instance_id, feature_name, location, " \
+                "feature_type, description, reporter FROM moms_instances INNER " \
+                "JOIN moms_features USING(feature_id);"
+            result = DB.db_read(query, 'senslopedb')
+        except Exception as err:
+            result = {"status": False, "message": "Failed to delete surficial data."} 
+        finally:
+            return result
+
+    def insert_moms_instance(site_id, feature_id, feature_name, 
+                            location, reporter):
+        try:
+            query = f'INSERT INTO moms_instances VALUES (0, {site_id}, {feature_id}, "{feature_name}", ' \
+                    f'"{location}", "{reporter}")'
+            status = DB.db_modify(query, 'senslopedb', True)
+            result = status
+        except Exception as err:
+            result = {"status": False, "message": "Failed to add MoMs data."}      
+        finally:
+            return result
+
+    def fetch_feature_name(feature_id, site_id):
+        try:
+            query = f'SELECT instance_id, feature_name FROM moms_instances WHERE feature_id = {feature_id} AND ' \
+                f'site_id = {site_id}'
+            result = DB.db_read(query, 'senslopedb')
+        except Exception as err:
+            print(err)
+            result = {"status": False, "message": "Failed to retrieve MoMs data."} 
+        finally:
+            return result

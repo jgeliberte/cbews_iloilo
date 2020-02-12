@@ -45,13 +45,16 @@ class DatabaseConnection():
                 ret_val = b
             else:
                 ret_val = a
-
+        except Exception as err:
+            ret_val = {"status": False,
+            "Message": err}
         except IndexError as err:
             print("IndexError on ")
             print(str(inspect.stack()[1][3]))
             # self.error_logger.store_error_log(self.exception_to_string(err))
-        except (MySQLdb.Error, MySQLdb.Warning) as err:
+        except (MySQLdb.Error, MySQLdb.Warning, MySQLdb.OperationalError) as err:
             # self.error_logger.store_error_log(self.exception_to_string(err))
+            ret_val = e
             print(">> MySQL error/warning: %s" % e)
             print("Last calls:")
             for i in range(1, 6):
@@ -61,6 +64,7 @@ class DatabaseConnection():
                     continue
             print("\n")
         finally:
+            print("Database:", ret_val)
             db.close()
             return ret_val
 
