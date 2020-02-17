@@ -29,5 +29,6 @@ class ProductionConfig(Config):
 APP_CONFIG = {
     "development": DevelopmentConfig,
     "production": ProductionConfig,
-    "url": "http://localhost:3000"
+    "url": "http://localhost:3000",
+    "MARIRONG_DIR": "/var/www/html/CBEWSL/MARIRONG"
 }
