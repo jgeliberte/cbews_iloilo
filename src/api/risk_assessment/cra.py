@@ -33,15 +33,6 @@ def upload():
         directory = f"{APP_CONFIG['MARIRONG_DIR']}/DOCUMENTS/"
         filename = file.filename
 
-        # if os.path.exists(f"{directory}{filename}"):
-        #     count = filename.count(".")
-        #     name_list = filename.split(".", count)
-        #     file_type = f".{name_list[count]}"
-        #     name_list.pop()
-        #     filename = f"{'.'.join(name_list)}-copy{file_type}"
-        # file.save(os.path.join(directory, filename))
-
-
         count = filename.count(".")
         name_list = filename.split(".", count)
         file_type = f".{name_list[count]}"
@@ -58,27 +49,7 @@ def upload():
 
         return_data = { "status": True }
     except Exception as err:
-        raise err
-        # return_data = { "status": False }
+        # raise err
+        return_data = { "status": False }
 
     return jsonify(return_data)
-
-
-# @COMMUNITY_RISK_ASSESSMENT_BLUEPRINT.route("/cra/community_risk_assessment/download", methods=["POST"])
-# # @COMMUNITY_RISK_ASSESSMENT_BLUEPRINT.route("/cra/community_risk_assessment/download/<filename>", methods=["POST"])
-# def download():
-#     print("==================================")
-#     data = request.get_json()
-#     print(data)
-#     filename = data["filename"]
-#     print("FILENAME", filename)
-#     file_type = filename.split(".")[1]
-#     mime_type = f"application/{file_type}"
-#     print("======")
-#     print(file_type)
-#     try:
-#         return send_from_directory(data["file_path"], filename, as_attachment=True, mimetype=mime_type, attachment_filename=(str(filename) + f".{file_type}"))
-        
-#     except Exception as e:
-#         print(e)
-#         return jsonify({ "status": False})
