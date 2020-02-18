@@ -46,4 +46,7 @@ def create_app():
     from src.api.ground_data.surficial_markers import SURFICIAL_MARKERS_BLUEPRINT
     app.register_blueprint(SURFICIAL_MARKERS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.alert_generation.public_alerts import PUBLIC_ALERTS_BLUEPRINT
+    app.register_blueprint(PUBLIC_ALERTS_BLUEPRINT, url_prefix="/api")
+
     return app
