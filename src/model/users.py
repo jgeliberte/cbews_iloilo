@@ -112,3 +112,12 @@ class Users():
 		'INNER JOIN users using (user_id) WHERE username = "%s"') % username
 		account = DB.db_read(query, 'commons_db')
 		return account
+
+	def fetch_user(user_id):
+		query = f"SELECT first_name, last_name FROM commons_db.users WHERE user_id = {user_id}"
+		print("")
+		print("query", query)
+		
+		user = DB.db_read(query, 'commons_db')
+		print(user)
+		return user
