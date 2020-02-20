@@ -1,1 +1,63 @@
-[{"invalids":[],"alerts":[{"ts":"2020-02-07 13:30:00","site_id":50,"site_code":"umi","public_alert":"A2","internal_alert":"A2-s0R0","validity":"2020-02-08 12:00:00","subsurface":[],"surficial":"nd","rainfall":"nd","triggers":[{"trigger_id":122170,"alert":"L2","ts":"2020-02-07 11:30:00"},{"trigger_id":122169,"alert":"r1","ts":"2020-02-07 10:30:00"}],"tech_info":{"rainfall":"RAIN UMIG: 1-day cumulative rainfall (100.00 mm) exceeded threshold (90.00 mm)","subsurface":{"L2":"UMITA (node 18) exceeded displacement threshold"}}},{"ts":"2020-02-07 13:30:00","site_id":18,"site_code":"ina","public_alert":"A0","internal_alert":"ND","validity":"","subsurface":[],"surficial":"nd","rainfall":"nd","triggers":[],"tech_info":[]},{"ts":"2020-02-07 13:30:00","site_id":29,"site_code":"mar","public_alert":"A0","internal_alert":"ND","validity":"","subsurface":[],"surficial":"nd","rainfall":"nd","triggers":[],"tech_info":[]},{"ts":"2020-02-07 13:30:00","site_id":38,"site_code":"pep","public_alert":"A0","internal_alert":"ND","validity":"","subsurface":[],"surficial":"nd","rainfall":"nd","triggers":[],"tech_info":[]}]}]
+[
+  {
+    "invalids": [],
+    "alerts": [
+      {
+        "ts": "2020-02-19 13:00:00",
+        "site_id": 29,
+        "site_code": "mar",
+        "public_alert": "A1",
+        "internal_alert": "ND-R0",
+        "validity": "2020-02-20 12:00:00",
+        "subsurface": [],
+        "surficial": "nd",
+        "rainfall": "nd",
+        "triggers": [
+          { "trigger_id": 122196, "alert": "r1", "ts": "2020-02-19 11:30:00" }
+        ],
+        "tech_info": {
+          "rainfall": "RAIN MARG: 1-day cumulative rainfall (80.00 mm) exceeded threshold (70.00 mm)"
+        }
+      },
+      {
+        "ts": "2020-02-19 13:00:00",
+        "site_id": 18,
+        "site_code": "ina",
+        "public_alert": "A0",
+        "internal_alert": "ND",
+        "validity": "",
+        "subsurface": [],
+        "surficial": "nd",
+        "rainfall": "nd",
+        "triggers": [],
+        "tech_info": []
+      },
+      {
+        "ts": "2020-02-19 13:00:00",
+        "site_id": 38,
+        "site_code": "pep",
+        "public_alert": "A0",
+        "internal_alert": "ND",
+        "validity": "",
+        "subsurface": [],
+        "surficial": "nd",
+        "rainfall": "nd",
+        "triggers": [],
+        "tech_info": []
+      },
+      {
+        "ts": "2020-02-19 13:00:00",
+        "site_id": 50,
+        "site_code": "umi",
+        "public_alert": "A0",
+        "internal_alert": "ND",
+        "validity": "",
+        "subsurface": [],
+        "surficial": "nd",
+        "rainfall": "nd",
+        "triggers": [],
+        "tech_info": []
+      }
+    ]
+  }
+]
