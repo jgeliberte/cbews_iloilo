@@ -64,7 +64,6 @@ class DatabaseConnection():
                     continue
             print("\n")
         finally:
-            print("Database:", ret_val)
             db.close()
             return ret_val
 

@@ -106,9 +106,9 @@ class GroundData():
 
     def fetch_moms(site_id):
         try:
-            query = "SELECT feature_id, instance_id, feature_name, location, " \
-                "feature_type, description, reporter FROM moms_instances INNER " \
-                "JOIN moms_features USING(feature_id);"
+            query = 'SELECT * FROM senslopedb.moms_instances INNER ' \
+                    'JOIN monitoring_moms USING(instance_id) INNER JOIN moms_features USING(feature_id) ' \
+                    f'WHERE site_id = "{site_id}";'
             result = DB.db_read(query, 'senslopedb')
         except Exception as err:
             result = {"status": False, "message": "Failed to delete surficial data."} 
@@ -120,20 +120,36 @@ class GroundData():
         try:
             query = f'INSERT INTO moms_instances VALUES (0, {site_id}, {feature_id}, "{feature_name}", ' \
                     f'"{location}", "{reporter}")'
+            print(query)
             status = DB.db_modify(query, 'senslopedb', True)
             result = status
         except Exception as err:
             result = {"status": False, "message": "Failed to add MoMs data."}      
         finally:
             return result
-
-    def fetch_feature_name(feature_id, site_id):
+    
+    def insert_moms_record(instance, ts, user_id, description):
         try:
-            query = f'SELECT instance_id, feature_name FROM moms_instances WHERE feature_id = {feature_id} AND ' \
-                f'site_id = {site_id}'
+            query = f'INSERT INTO monitoring_moms VALUES (0, {instance}, "{ts}", ' \
+                    f'{user_id}, "{description}", "", 18)'
+            status = DB.db_modify(query, 'senslopedb', True)
+            result = {"status": True, "data": status}
+        except Exception as err:
+            result = {"status": False, "message": f"Failed to add MoMs Record data. Error: {err}"}      
+        finally:
+            return result
+
+    def fetch_feature_name(feature_id, feature, site_id):
+        try:
+            if isinstance(feature, str) and feature != '':
+                query = f'SELECT instance_id, feature_name, location, reporter FROM moms_instances WHERE feature_name = "{feature}" AND ' \
+                    f'site_id = {site_id} AND feature_id = {feature_id}'
+            else:
+                query = f'SELECT instance_id, feature_name, location, reporter FROM moms_instances WHERE ' \
+                    f'site_id = {site_id} AND feature_id = {feature_id}'
+                print(query)
             result = DB.db_read(query, 'senslopedb')
         except Exception as err:
-            print(err)
             result = {"status": False, "message": "Failed to retrieve MoMs data."} 
         finally:
             return result
