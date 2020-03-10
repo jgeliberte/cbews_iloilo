@@ -12,6 +12,25 @@ from src.api.helpers import Helpers as h
 ####################################
 
 
+def get_latest_trigger(entry):
+    """
+    """
+    retriggers = entry["triggers"]
+    max = None
+    for index, retrig in enumerate(retriggers):
+        if max:
+            ts = max["ts"]
+            if isinstance(max["ts"], str):
+                ts = h.str_to_dt(max["ts"])
+
+        if not max or ts < retriggers[index]["ts"]:
+            max = retriggers[index]
+    return {
+        "latest_trigger_timestamp": max["ts"],
+        "trigger": max["alert"]
+    }
+
+
 def get_retrigger_index(retriggers, trigger):
     # const temp = retriggers.map(x => x.alert).indexOf(trigger);
     temp = next((index for (index, d) in enumerate(retriggers) if d["alert"] == trigger), -1)
@@ -77,6 +96,7 @@ def get_all_invalid_triggers_of_site(site_code, invalids_list):
 
 
 def process_with_alerts_entries(with_alerts, merged_list, invalids):
+    h.var_checker("merged_list", merged_list, True)
     candidates_list = []
 
     for w_alert in with_alerts:
@@ -173,8 +193,8 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
 
         if not is_valid_but_needs_manual:
             return_dict = get_latest_trigger(entry)
-            entry = entry.update(entry)
-            entry = entry.update(return_dict)
+            entry.update(return_dict)
+            h.var_checker("entry", entry, True)
 
         for_updating = True
         index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == entry["site_code"]), -1)
@@ -182,12 +202,12 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
         if index != -1:
             merged_list[index]["for_release"] = True
 
-            data_timestamp = merged_list[index]["data_timestamp"]
+            data_ts = merged_list[index]["data_ts"]
             trigger_timestamp = merged_list[index]["trigger_timestamp"]
             latest_trigger_timestamp = entry["latest_trigger_timestamp"]
             ts = entry["ts"]
 
-            if h.str_to_dt(data_timestamp) == h.str_to_dt(ts):
+            if h.str_to_dt(data_ts) == h.str_to_dt(ts):
                 for_updating = True
 
             # TODO Might fail when testing
@@ -233,7 +253,7 @@ def process_candidate_alerts(generated_alerts, db_alerts):
 
     no_alerts, with_alerts = separate_with_alerts_to_no_alerts_on_JSON(all_alerts)
 
-    merged_list = latest.extend(overdue)
+    merged_list = latest + overdue
 
     return_list = process_with_alerts_entries(with_alerts, merged_list, invalids)
     invalid_entries = list(filter(lambda x: x["status"] == invalid, return_list))
@@ -252,7 +272,7 @@ def main(internal_gen_data=None):
         generated_alerts_dict = internal_gen_data
     else:
         generated_alerts_dict = []
-        full_filepath = "../../Documents/monitoringoutput/alertgen/PublicAlertRefDB.json"
+        full_filepath = "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen/PublicAlertRefDB.json"
         print(f"Getting data from {full_filepath}")
         print()
 
