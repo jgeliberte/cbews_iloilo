@@ -1,15 +1,21 @@
 import MySQLdb
 import subprocess
+import sys
 
 class LocalToCloud():
 
     def last_cloud_inbox_id(self):
         temp_ssh = "ssh dynaslope@dynaslope.phivolcs.dost.gov.ph "
-        temp_mysql = "\"mysql -ucbewsl -pcb3wsls3rv3r -e'use comms_db; select inbox_id from smsinbox_loggers order by inbox_id desc limit 1'\""
+        temp_mysql = "\"mysql -ucbewsl -pcb3wsls3rv3r -e'use comms_db; select ts_sms from smsinbox_loggers order by ts_sms desc limit 1'\""
         proc = subprocess.Popen([temp_ssh+temp_mysql], stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
         temp_last_smslogger_id = out.decode("utf-8").split("\n")
-        return temp_last_smslogger_id[1]
+        print(temp_last_smslogger_id)
+        if temp_last_smslogger_id[0] == '':
+            temp_last_smslogger_id = 0
+        else:
+            temp_last_smslogger_id = temp_last_smslogger_id[1]
+        return temp_last_smslogger_id
 
     def fetch_last_cloud_rain_data(self):
         print("1")
@@ -45,7 +51,7 @@ class LocalToCloud():
     def fetch_latest_local_data(self, inbox_id):
         try:
             db, cur = self.rack_connect('192.168.150.75', 'pysys_local','NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg')
-            a = cur.execute(f'SELECT * FROM smsinbox_loggers WHERE inbox_id > {inbox_id} LIMIT 100')
+            a = cur.execute(f'SELECT * FROM smsinbox_loggers WHERE ts_sms > "{inbox_id}" LIMIT 100')
             out = []
             if a:
                 out = cur.fetchall()
@@ -60,11 +66,11 @@ class LocalToCloud():
         for row in local_data:
             (inbox_id, ts_sms, ts_stored, mobile_id, sms_msg, read_status, web_status, gsm_id) = row
             sms_msg = sms_msg.replace('"','')
-            temp_query = temp_query + f'({inbox_id}, "{ts_sms}", "{ts_stored}", {mobile_id}, "{sms_msg}", 0, {web_status == None and "NULL" or web_status}, {gsm_id}),'
+            if ts_stored == None:
+                ts_stored = ts_sms
+            temp_query = temp_query + f'(0, "{str(ts_sms)}", "{str(ts_stored)}", {mobile_id}, "{sms_msg}", 0, {web_status == None and "NULL" or web_status}, {gsm_id}),'
+        print(temp_query)
         query = f'INSERT INTO smsinbox_loggers VALUES {temp_query[:-1]};'
-        print("\n\n")
-        print(query)
-        print("\n\n")
         try:
             db, cur = self.rack_connect('202.90.159.64','cbewsl','cb3wsls3rv3r')
             a = cur.execute(query)
