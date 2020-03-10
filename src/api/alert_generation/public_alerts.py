@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from connections import SOCKETIO
-import sys
+import sys, json
 from datetime import datetime as dt, timedelta
 from src.model.alert_generation import AlertGeneration
 from src.model.users import Users
@@ -33,7 +33,7 @@ def format_release_triggers(release_trigger_list):
             "trigger_type": trigger_type,
             "trigger_source": trigger_source,
             "trigger_alert_level": alert_level,
-            "timestamp": timestamp, 
+            "timestamp": dt.strftime(timestamp, "%Y-%m-%d %H:%M:%S"), 
             "info": info
         })
 
@@ -60,7 +60,7 @@ def get_unique_trigger_per_type(trigger_list):
                 "trigger_type": trigger_type,
                 "trigger_source": trigger_source,
                 "trigger_alert_level": alert_level,
-                "timestamp": timestamp, 
+                "timestamp": dt.strftime(timestamp, "%Y-%m-%d %H:%M:%S"), 
                 "info": info
             })
 
@@ -69,7 +69,7 @@ def get_unique_trigger_per_type(trigger_list):
 
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/get_ongoing_and_extended_monitoring", methods=["GET"])
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/get_ongoing_and_extended_monitoring/<run_ts>", methods=["GET"])
-def get_ongoing_and_extended_monitoring(run_ts=dt.now()):
+def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
     """
     return
     """
@@ -206,4 +206,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now()):
             "message": f"Failed to fetch active events data. Error: {err}"
         }
 
-    return jsonify(alerts_list)
+    if source == "fetch":
+        return jsonify(alerts_list)
+    else:
+        return json.dumps(alerts_list)

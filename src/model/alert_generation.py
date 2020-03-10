@@ -178,6 +178,7 @@ class AlertGeneration():
 
         query = f"{query} WHERE ias.alert_symbol = '{trigger_type}'"
         H.var_checker("get_internal_alert_symbol_row query", query, True)
+        H.var_checker("type query", type(query), True)
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)

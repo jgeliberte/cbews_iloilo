@@ -50,3 +50,6 @@ class Helpers():
             print(f"===== {var_name} =====")
             printer = pprint.PrettyPrinter(indent=4)
             printer.pprint(var)
+
+    def str_to_dt(string_value):
+        return datetime.strptime(string_value, "%Y-%m-%d %H:%M:%S")
