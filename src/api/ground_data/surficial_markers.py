@@ -63,7 +63,7 @@ def modify():
             }
         else:
             mo_ret_val = GroundData.fetch_surficial_mo_id(data['ref_ts'], data['site_id'])
-            marker_ids = dict(map(reversed, GroundData.fetch_marker_ids(mo_ret_val[0][0])))
+            marker_ids = dict(map(reversed, GroundData.fetch_marker_ids_v_moid(mo_ret_val[0][0])))
             for x in data['marker_values']:
                 status = GroundData.update_surficial_marker_values(mo_ret_val[0][0], marker_ids[x], data['marker_values'][x])
                 if status == None:
@@ -87,3 +87,63 @@ def modify():
             "message": f"Failed to modify surficial data. Error: {err}"
         }
     return jsonify(surficial)
+
+@SURFICIAL_MARKERS_BLUEPRINT.route("/ground_data/surficial_markers/add", methods=["POST"])
+def add():
+    try:
+        data = request.get_json()
+        mo_status = GroundData.insert_marker_observation(data)
+        missing_marker = []
+        if mo_status['status'] == True:
+            if mo_status['mo_id'] != None:
+                surficial_value = []
+                surficial = {
+                    "status": True,
+                    "message": "Successfully added new surficial data."
+                }
+                marker_ids = GroundData.fetch_surficial_markers(data['site_id'])
+                for id in marker_ids:
+                    marker_status = GroundData.insert_marker_values(id[0], 
+                            data['marker_value'][id[1]], mo_status['mo_id'])
+                    if (marker_status['data'] == False):
+                        missing_marker.append(id[0])
+                if len(missing_marker) != 0:
+                    message = f'Missing or Invalid marker value for: {id[0]}'
+                else:
+                    message = "Successfully added surficial data."
+                surficial = {
+                    "status": True,
+                    "message": message
+                }
+            else:
+                surficial = {
+                    "status": False,
+                    "message": f"Failed to modify surficial data. Error: Duplicate entry for timestamp {data['ts']}"
+                }
+        else:
+            surficial = {
+                "status": False,
+                "message": f"Failed to modify surficial data. Error: {mo_status['message']}"
+            }
+    except Exception as err:
+        surficial = {
+            "status": False,
+            "message": f"Failed to modify surficial data. Error: {err}"
+        }
+    finally:
+        return jsonify(surficial)
+
+@SURFICIAL_MARKERS_BLUEPRINT.route("/ground_data/surficial_markers/remove", methods=["POST"])
+def remove():
+    try:
+        data = request.get_json()
+        mo_id = GroundData.delete_marker_observation(data)
+        del_status = GroundData.delete_marker_values(mo_id)
+        surficial = del_status
+    except Exception as err:
+        surficial = {
+            "status": False,
+            "message": f"Failed to modify surficial data. Error: {err}"
+        }
+    finally:
+        return jsonify(surficial)
