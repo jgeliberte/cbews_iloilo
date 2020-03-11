@@ -143,8 +143,6 @@ class AlertGeneration():
             query = f"{query} alert_level = {alert_level}"
         elif alert_symbol:
             query = f"{query} alert_symbol = {alert_symbol}"
-        
-        H.var_checker("get_public_alert_row query", query, True)
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)

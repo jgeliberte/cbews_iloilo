@@ -4,7 +4,7 @@ import sys, json
 from datetime import datetime as dt, timedelta
 from src.model.alert_generation import AlertGeneration
 from src.model.users import Users
-from src.api.helpers import Helpers
+from src.api.helpers import Helpers as h
 
 
 PUBLIC_ALERTS_BLUEPRINT = Blueprint("public_alerts_blueprint", __name__)
@@ -17,14 +17,20 @@ def get_trigger_type_details(trigger_type):
     print()
 
 
-def format_release_triggers(release_trigger_list):
+def format_release_triggers(payload, process_one=False):
     """
     Util Function
     """
     AG = AlertGeneration
     release_trig_list = []
-    for trig in release_trigger_list:
-        (trigger_id, release_id, trigger_type, timestamp, info) = trig
+
+    list_to_process = payload
+    if process_one:
+        list_to_process = [payload]
+
+    for trig in list_to_process:
+        h.var_checker("trig", trig, True)
+        (trigger_id, release_id, trigger_type, timestamp, info) = trig[0]
         trigger_source = AG.get_internal_alert_symbol_row(trigger_type, return_col="trigger_source")
         alert_level = AG.get_internal_alert_symbol_row(trigger_type, return_col="alert_level")
         release_trig_list.append({
@@ -33,11 +39,15 @@ def format_release_triggers(release_trigger_list):
             "trigger_type": trigger_type,
             "trigger_source": trigger_source,
             "trigger_alert_level": alert_level,
-            "timestamp": dt.strftime(timestamp, "%Y-%m-%d %H:%M:%S"), 
+            # NOTE: Unconventional
+            "trigger_timestamp": dt.strftime(timestamp, "%Y-%m-%d %H:%M:%S"), 
             "info": info
         })
 
-    return release_trig_list
+    if process_one:
+        return release_trig_list[0]
+    else:
+        return release_trig_list
 
 
 def get_unique_trigger_per_type(trigger_list):
@@ -79,7 +89,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 
     try:
         AG = AlertGeneration
-        H = Helpers
         events = AG.get_ongoing_extended_overdue_events(complete=True, include_site=True)
 
         active_events_dict = { 
@@ -100,7 +109,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                 reporter = f"{firstname} {lastname}"
 
                 data_ts = data_timestamp
-                rounded_data_ts = H.round_to_nearest_release_time(
+                rounded_data_ts = h.round_to_nearest_release_time(
                                         data_ts=data_ts,
                                         interval=release_interval_hours
                                     )
@@ -110,12 +119,13 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                     str_release_time = str(release_time)
                     release_time = f"{str_data_ts_ymd} {str_release_time}"
                 
-                H.var_checker("release_time", release_time, True)
+                h.var_checker("release_time", release_time, True)
                 
                 internal_alert = internal_alert_level
                 event_data["site_id"] = site_id
                 event_data["site_code"] = site_code
-                event_data["release_id"] = release_id
+                # NOTE: Unconventional
+                event_data["latest_release_id"] = release_id
                 event_data["data_ts"] = dt.strftime(data_ts, "%Y-%m-%d %H:%M:%S")
                 event_data["release_time"] = release_time
                 event_data["internal_alert_level"] = internal_alert
@@ -141,10 +151,13 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                 ###########################
                 # LATEST RELEASE TRIGGERS #
                 ###########################
-                release_triggers = AG.get_release_triggers(
-                    release_id=release_id
+                latest_release_trigger = AG.get_release_triggers(
+                    release_id=release_id,
+                    return_count=1
                 )
-                event_data["release_triggers"] = format_release_triggers(release_triggers)
+                # event_data["release_triggers"] = format_release_triggers(payload=latest_release_trigger, process_one=True)
+                temp = format_release_triggers(payload=latest_release_trigger, process_one=True)
+                event_data.update(temp)
 
                 #########################
                 # LATEST EVENT TRIGGERS #
@@ -197,7 +210,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
             "message": "Success",
             "data": active_events_dict
         }
-        H.var_checker("active_events_dict", active_events_dict, True)
+        h.var_checker("active_events_dict", active_events_dict, True)
 
     except Exception as err:
         raise err

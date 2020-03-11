@@ -27,6 +27,8 @@ class Users():
 			site_id = data["site_id"]
 			site_code = data["site_code"]
 			username = data["username"]
+			password = data["password"]
+			mobile_number = data["mobile_number"]
 
 		salt =  str(hashlib.md5(str(dt.today()).encode("utf-8")).hexdigest())
 		password = str(hashlib.sha512(str(password+salt).encode("utf-8")).hexdigest())
