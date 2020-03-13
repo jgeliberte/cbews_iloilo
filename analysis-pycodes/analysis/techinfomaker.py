@@ -67,6 +67,20 @@ def query_surficial_alerts(site_id, latest_trigger_ts):
         result = qdb.get_db_dataframe(query)
         
         return result
+    
+def query_moms_alerts(site_id, latest_trigger_ts):
+        query = "SELECT * FROM senslopedb.monitoring_moms as moms " + \
+            "JOIN senslopedb.moms_instances as mi " + \
+            "ON moms.instance_id = mi.instance_id " + \
+            "JOIN commons_db.sites as site " + \
+            "ON mi.site_id = site.site_id " + \
+            f"WHERE site.site_id = '{site_id}'" + \
+            f"AND moms.observance_ts = '{latest_trigger_ts}'" + \
+            f"AND moms.op_trigger > 0"
+
+        result = qdb.get_db_dataframe(query)
+        
+        return result
 
 def format_node_details(result):
     node_details = []
@@ -205,6 +219,44 @@ def get_surficial_tech_info(site_id, latest_trigger_ts):
     except Exception as err:
         print(err)
         raise
+
+
+def formulate_moms_tech_info(alert_detail):
+    try:
+        tech_info = []
+        print(vars(alert_detail))
+        # for index, row in alert_detail.iterrows():
+        #     name = row['marker_name']
+        #     disp = row['displacement']
+        #     time = '{:.2f}'.format(row['time_delta'])
+        #     tech_info += ["Marker %s: %s cm difference in %s hours" %(name, disp, time)]
+        
+        # moms_tech_info = '; '.join(tech_info)
+        moms_tech_info = ""
+        return moms_tech_info
+
+    except Exception as err:
+        print(err)
+        raise
+
+
+def get_moms_tech_info(site_id, latest_trigger_ts):
+    try:
+        alert_detail = query_moms_alerts(site_id, latest_trigger_ts)
+
+        m2_triggers = alert_detail[(alert_detail.op_trigger == 2)]
+        m3_triggers = alert_detail[(alert_detail.op_trigger == 3)]
+
+        moms_tech_info = {}
+        group_array = [m2_triggers, m3_triggers]
+        for index, group in enumerate(group_array):
+            if (len(group) != 0):
+                tech_info = formulate_moms_tech_info(group)
+                moms_tech_info["m" + str(index+2)] = tech_info
+        return moms_tech_info
+    
+    except Exception as err:
+        print(err)
 
         
 def main(trigger_df):
