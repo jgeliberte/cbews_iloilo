@@ -98,7 +98,6 @@ def check_if_has_unresolved_moms_instance(site_moms_alerts_df):
     unresolved = []
     if not site_moms_alerts_df.empty:
         unique = site_moms_alerts_df.drop_duplicates(subset="instance_id", keep="first", inplace=False)
-        var_checker("unique", unique)
         unresolved = unique.loc[unique["op_trigger"] >= 2, :]
 
     return unresolved, len(unresolved) > 0
@@ -122,10 +121,8 @@ def get_site_moms_alerts(site_id, start, end):
     query = f"{query} AND moms.observance_ts >= '{start}'"
     query = f"{query} AND moms.observance_ts <= '{end}'"
     query = f"{query} ORDER BY moms.observance_ts DESC"
-    
-    var_checker("query", query, True)
+
     site_moms_alerts_df = qdb.get_db_dataframe(query)
-    var_checker("site_moms_alerts_df", site_moms_alerts_df, True)
     sorted_df = site_moms_alerts_df.sort_values(['op_trigger'], ascending=[False])
 
     moms_op_trigger = 0
@@ -327,13 +324,11 @@ def nd_internal_alert(no_data, internal_df, internal_symbols):
     
     max_alert_level = max(internal_symbols[internal_symbols.source_id == \
                                            source_id]['alert_level'].values)
-    var_checker("source_id", source_id, True)
-    var_checker("alert_level", alert_level, True)
 
     if alert_level < max_alert_level:
-        internal_df.loc[internal_df.source_id == source_id, 'alert_symbol'] = internal_df[internal_df.source_id == source_id]['alert_symbol'].values[0].lower()
+        lower_symbol = internal_df[internal_df.source_id == source_id]['alert_symbol'].values[0].lower()
+        internal_df.loc[internal_df.source_id == source_id, 'alert_symbol'] = lower_symbol
 
-    # var_checker("AFTER ND internal_df", internal_df, True)
     return internal_df
 
 
@@ -384,12 +379,14 @@ def get_internal_alert(pos_trig, release_op_trig, internal_symbols):
     # REPLACE NO DATA TRIGGERS
     if len(no_data) != 0:
         no_data_grp = no_data.groupby('source_id', as_index=False)
-        var_checker("internal_df before grp", internal_df, True)
+        # var_checker("INTERNAL DF BEFORE ND", internal_df, True)
         internal_df = no_data_grp.apply(nd_internal_alert,
                                         internal_df=internal_df,
                                         internal_symbols=internal_symbols)
-    internal_df = internal_df.drop_duplicates()
-    var_checker("AFTER PROCESS after drop", internal_df, True)
+    
+    # var_checker("INTERNAL DF AFTER ND", internal_df, True)
+    # NOTE: LOUIE CHANGES FILTERS ON NO DATA. PACHECK KAY MERYLL
+    internal_df = internal_df.drop_duplicates(subset = 'source_id', keep = 'last')
     internal_df = internal_df.reset_index(drop=True)
     
     return internal_df
@@ -549,8 +546,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     site_code = site_props['site_code'].values[0]
     site_id = site_props['site_id'].values[0]
     # LOUIE
-    print(site_code)
-    # qdb.print_out(site_code)
+    print({f"Site Code: {site_code.upper()}"})
 
     # Creates a public_alerts table if it doesn't exist yet
     if qdb.does_table_exist('public_alerts') == False:
@@ -569,7 +565,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # operational triggers for monitoring at timestamp end
     op_trig = get_operational_trigger(site_id, start_monitor, end)
-    var_checker("op_trig", op_trig, True)
 
     release_op_trig = op_trig[op_trig.ts_updated >= \
             release_time(end)-timedelta(hours=4)]
@@ -579,7 +574,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
             'subsurface']['source_id'].values[0]
     surficial_id = internal_symbols[internal_symbols.trigger_source == \
             'surficial']['source_id'].values[0]
-    var_checker("surficial_id", surficial_id, True)
     moms_id = internal_symbols[internal_symbols.trigger_source == \
             'moms']['source_id'].values[0]
 
@@ -672,9 +666,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
             if is_x == True:
                 rainfall = -2
 
-        var_checker("after ND internal_df", internal_df, True)
         internal_df = internal_df.sort_values('hierarchy_id')
-        var_checker("sorted h internal_df", internal_df, True)
         internal_alert = ''.join(internal_df['alert_symbol'].values)
 
         if public_alert > 1:
@@ -794,8 +786,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
                     'rainfall': [rainfall], 'moms': [moms_alert],
                     'triggers': [triggers], 'tech_info': [tech_info]})
 
-    var_checker("public_df", public_df.iloc[0], True)
-
     # writes public alert to database
     pub_sym_id =  public_symbols[public_symbols.alert_level == \
                   public_alert]['pub_sym_id'].values[0]
@@ -881,7 +871,7 @@ def main(end=datetime.now()):
     alerts = alerts.sort_values(['public_alert', 'site_code'], ascending=[False, True])
     try:
         var_checker("alerts", alerts.iloc[0]["triggers"], True)
-        var_checker("alerts", alerts.loc(alerts["triggers"]), True)
+        # var_checker("alerts", alerts.loc(alerts["triggers"]), True)
     except Exception as err:
         print(err)
 
@@ -889,6 +879,7 @@ def main(end=datetime.now()):
     alerts['public_alert'] = alerts['public_alert'].map(pub_map)
     alerts['rainfall'] = alerts['rainfall'].map(rain_map)
     alerts['surficial'] = alerts['surficial'].map(surficial_map)
+    alerts['moms'] = alerts['moms'].map(moms_map)
     site_alerts = alerts.groupby('site_code', as_index=False)
     alerts = site_alerts.apply(subsurface_sym,
                                sym_map=subsurface_map).reset_index(drop=True)
@@ -927,14 +918,14 @@ def main(end=datetime.now()):
     if not os.path.exists(output_path+sc['fileio']['output_path']):
         os.makedirs(output_path+sc['fileio']['output_path'])
     
-    print(output_path+sc['fileio']['output_path'])
+    print(output_path)
 
     with open(output_path+sc['fileio']['output_path']+'PublicAlertRefDB.json', 'w') as w:
         w.write(public_json)
 
     # LOUIE
+    print(f"PublicAlertRefDB.json written at {output_path+sc['fileio']['output_path']}")
     print('runtime = %s' %(datetime.now() - start_time))
-    # qdb.print_out('runtime = %s' %(datetime.now() - start_time))
     
     return alerts
 

@@ -1,35 +1,35 @@
 [sb_local]
-host = 127.0.0.1
+host = 202.90.159.64
 port = 3306
-user = root
-password = senslope
+user = cbewsl
+password = cb3wsls3rv3r
 schema = senslopedb
 
 [gsm_pi]
-host = 192.168.150.100
+host = 202.90.159.64
 port = 3306
-user = cbews_sys
+user = cbewsl
 password = cb3wsls3rv3r
 schema = comms_db
 
 
 [ubuntu75_pysys_local]
-host = 192.168.150.100
+host = 202.90.159.64
 port = 3306
-user = cbews_sys
+user = cbewsl
 password = cb3wsls3rv3r
 schema = senslopedb
 
 [staff1]
-host = 127.0.0.1
+host = 202.90.159.64
 port = 3306
-user = root
-password = senslope
+user = cbewsl
+password = cb3wsls3rv3r
 schema = senslopedb
 
 [smsdb_remote]
-host = 192.168.150.100
+host = 202.90.159.64
 port = 3306
-user = cbews_sys
+user = cbewsl
 password = cb3wsls3rv3r
 schema = senslopedb

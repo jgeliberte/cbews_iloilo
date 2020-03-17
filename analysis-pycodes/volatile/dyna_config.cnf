@@ -1,10 +1,10 @@
 [Hosts]
-local = 192.168.150.100
-senslope = 192.168.150.100
-dynaslope = 192.168.150.100
-gsm = 192.168.150.100
-gsm2 = 192.168.150.100
-sandbox = 192.168.150.100
+local = 202.90.159.64
+senslope = 202.90.159.64
+dynaslope = 202.90.159.64
+gsm = 202.90.159.64
+gsm2 = 202.90.159.64
+sandbox = 202.90.159.64
 
 
 [Resource]
@@ -25,7 +25,7 @@ resources4 = sb_remote,sb_rack_remote_1,sb_local
 [Db]
 password = cb3wsls3rv3r
 name = senslopedb
-user = cbews_sys
+user = cbewsl
 
 [Serial]
 baudrate = 57600
@@ -58,7 +58,7 @@ FailOobEN = Error! Your date or time value is either too late or too early. Plea
 
 [FileIO]
 querylatestreportoutput = /home/louie-cbews/Desktop/query_latest_report_output.txt
-alertgenscript = /home/louie-cbews/centralserver/analysis/subsurface/alertgen.py
+alertgenscript = /home/louie-cbews/CODES/cbews_iloilo/analysis-pycodes/centralserver/analysis/subsurface/alertgen.py
 gndalert1 = /home/louie-cbews/CODES/cbews_iloilo/analysis-pycodes/analysis/surficial/markeralerts.py
 surficialscript = /home/louie-cbews/CODES/cbews_iloilo/analysis-pycodes/analysis/surficial/markeralerts.py
 output_path = /Documents/monitoringoutput/alertgen/
