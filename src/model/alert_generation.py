@@ -4,6 +4,68 @@ from src.api.helpers import Helpers
 
 class AlertGeneration():
 
+    def insert_operational_trigger(site_id, trig_sym_id, ts_updated):
+        """
+        Inserts operational_trigger table entry.
+
+        Args:
+            site_id (int) - where will the trigger be associated
+            trig_sym_id (int) - trigger_sym_id - the kind of trigger
+            ts_updated (str/datetime) - since this is an insert, we can assume
+                            the ts and ts_updated is the same.
+        """
+        if isinstance(ts_updated, str):
+            ts_updated = Helpers.str_to_dt(ts_updated)
+        ts = ts_updated
+        query = "INSERT INTO senslopedb.operational_triggers "
+        query += "(ts, site_id, trigger_sym_id, ts_updated) "
+        query += f"VALUES ({ts}, {site_id}, {trig_sym_id}, {ts_updated})"
+
+        schema = "senslopedb"
+        trigger_id = DB.db_modify(query, schema, True)
+
+        return trigger_id
+
+
+    def update_operational_trigger(op_trig_id, trig_sym_id, ts_updated):
+        """
+        Updates operational_trigger table entry: trigger_sym_id or ts_updated.
+
+        Args:
+            op_trig_id (int) - trigger_id identified the row to be updated
+            trig_sym_id (int) - trigger_sym_id - the kind of trigger
+            ts_updated (str/datetime) - updating ts_updated
+        """
+        query = "UPDATE senslopedb.operational_triggers "
+        query += f"SET trigger_sym_id={trig_sym_id}, trigger_sym_id={trig_sym_id}, ts_updated={ts_updated})"
+        query += f"WHERE trigger_id = {op_trig_id}"
+
+        schema = "senslopedb"
+        result = DB.db_modify(query, schema, True)
+
+        return result
+
+
+    def fetch_recent_operational_trigger(site_id, trig_sym_id=None):
+        """
+        Returns most recent operational_trigger.
+
+        Args:
+            site_id (int) - trigger_id identified the row to be updated
+            trig_sym_id (int) - trigger_sym_id - the kind of trigger
+        """
+        query = "SELECT * FROM operational_triggers "
+        query += f"WHERE site_id = {site_id} "
+        if trig_sym_id:
+            query += f"AND trigger_sym_id = {trig_sym_id} "
+        query += "ORDER BY ts_updated DESC"
+
+        schema = "senslopedb"
+        result = DB.db_read(query, schema)
+
+        return result[0]
+
+
     def get_ongoing_extended_overdue_events(site_id=None, complete=False, include_site=False):
         """
         Returns ongoing, extended, and routine events
@@ -18,7 +80,7 @@ class AlertGeneration():
         if include_site:
             query = f"{query} INNER JOIN commons_db.sites USING (site_id)"
         query = f"{query} WHERE status in ('on-going', 'extended')"
-        print(query)
+
         # schema = DB.db_switcher(site_id)
         schema = "senslopedb"
         result = DB.db_read(query, schema)
@@ -124,6 +186,7 @@ class AlertGeneration():
 
         return result
 
+
     ###################################
     # MINI QUERIES 
     ###################################
@@ -186,3 +249,25 @@ class AlertGeneration():
             result = result[0][0]
 
         return result
+
+
+    def get_operational_trigger_symbol(trigger_source, alert_level, return_col=None):
+        """
+        Returns tuple operational_trigger row
+
+        Args:
+            trigger_source (str) - 
+            alert_level (int) - 
+        """
+        select_option = "ots.*"
+        if return_col:
+            select_option = return_col
+        query = f"SELECT {select_option} FROM operational_trigger_symbols as ots "
+        query += "INNER JOIN trigger_hierarchies as th USING (source_id) "
+        query += f"WHERE th.trigger_source = '{trigger_source}' "
+        query += f"AND ots.alert_level = {alert_level}"
+
+        schema = "senslopedb"
+        result = DB.db_read(query, schema)
+
+        return result[0]

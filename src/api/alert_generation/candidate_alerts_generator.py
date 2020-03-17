@@ -4,7 +4,94 @@ from connections import SOCKETIO
 from datetime import datetime as dt, timedelta
 from src.api.alert_generation.public_alerts import get_ongoing_and_extended_monitoring 
 from src.model.users import Users
+from src.model.sites import Sites
 from src.api.helpers import Helpers as h
+
+
+def prepare_sites_for_routine_release(no_alerts, excluded_indexes_list, invalid_entries):
+    # Outside array pertains to season group [season 1, season 2]
+    # Inside arrays contains months (0 - January, 11 - December)
+    wet = [[0, 1, 5, 6, 7, 8, 9, 10, 11], [4, 5, 6, 7, 8, 9]]
+    dry = [[2, 3, 4], [0, 1, 2, 3, 10, 11]]
+
+    data_timestamp = no_alerts[0]["ts"]
+    data_ts = h.str_to_dt(data_timestamp)
+    weekday = data_ts.weekday()
+    matrix = None
+    return_list = []
+    routine_list = []
+
+    if dt.strftime(data_ts, "%H:%M") == "11:30":
+        if weekday == 3:
+            matrix = dry
+        elif weekday in [2, 5]:
+            matrix = wet
+    
+    if matrix:
+        merged_list = no_alerts + invalid_entries
+        for index, item in enumerate(merged_list):
+            site_code = entry["site_code"]
+            ts = entry["ts"]
+            month = h.str_to_dt(ts).month
+            site_detail = Sites.get_site_details(filter_value=site_code, site_filter="site_code")
+            h.var_checker("site_detail", site_detail, True)
+            season = site_detail["season"]
+
+            if month in matrix[season - 1]:
+                print("")
+                # TODO: FINISH ROUTINE TASKS. TEST FOR NOW.
+
+
+def prepare_sites_for_extended_release(extended_sites, no_alerts):
+    """
+    """
+    return_list = []
+    extended_index = []
+    for site in extended_sites:
+        index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
+        if index > -1:
+            x = no_alerts[index]
+            extended_index.append(index)
+
+            data_ts = site["data_ts"]
+            day = site["day"]
+            ts = x["ts"]
+
+            if data_ts != ts and day > 0:
+                if ts.hour == 11 and ts.minute == 30:
+                    x.update({
+                        "status": "extended",
+                        "latest_trigger_timestamp": "extended",
+                        "trigger": "extended",
+                        "validity": "extended"
+                    })
+                    return_arr.append(x)
+
+    return return_list, extended_index
+
+
+def tag_sites_for_lowering(merged_arr, no_alerts):
+    """
+    """
+    return_arr = []
+    lowering_index = []
+    for site in merged_arr:
+        if not site["for_release"]:
+            index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
+            x = no_alerts[index]
+            lowering_index.append(index)
+            data_ts = site["data_ts"]
+            internal_alert_level = site["internal_alert_level"]
+
+            if data_ts != x["ts"] and internal_alert_level not in ["A0", "ND"]:
+                x.update({
+                    "status": "valid",
+                    "latest_trigger_timestamp": "end",
+                    "trigger": "No new triggers",
+                    "validity": "end"
+                })
+                return_arr.append(x)
+    return [return_arr, lowering_index]
 
 
 ####################################
@@ -194,7 +281,6 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
         if not is_valid_but_needs_manual:
             return_dict = get_latest_trigger(entry)
             entry.update(return_dict)
-            h.var_checker("entry", entry, True)
 
         for_updating = True
         index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == entry["site_code"]), -1)
@@ -241,7 +327,6 @@ def separate_with_alerts_to_no_alerts_on_JSON(alerts_list):
 def process_candidate_alerts(generated_alerts, db_alerts):
     """
     """
-    h.var_checker("db_alerts", db_alerts, True)
     all_alerts = generated_alerts["alerts"]
     invalids = generated_alerts["invalids"]
 
@@ -256,14 +341,21 @@ def process_candidate_alerts(generated_alerts, db_alerts):
     merged_list = latest + overdue
 
     return_list = process_with_alerts_entries(with_alerts, merged_list, invalids)
-    invalid_entries = list(filter(lambda x: x["status"] == invalid, return_list))
+    invalid_entries = list(filter(lambda x: x["status"] == "invalid", return_list))
     candidate_alerts_list.extend(return_list)
     
     return_list = tag_sites_for_lowering(merged_list, no_alerts)
-    lowering_return, lowering_index = return_list
+    lowering_return, lowering_indexes_list = return_list
     candidate_alerts_list.extend(lowering_return)
 
-    return_list = prepareSites
+    return_list = prepare_sites_for_extended_release(extended, no_alerts)
+    extended_return, extended_indexes_list = return_list
+    candidate_alerts_list.extend(extended_return)
+
+    excluded_indexes_list = lowering_indexes_list + extended_indexes_list
+    return_list = prepare_sites_for_routine_release(no_alerts, extended_indexes_list, invalid_entries)
+
+    return candidate_alerts_list
 
 
 def main(internal_gen_data=None):
@@ -290,9 +382,9 @@ def main(internal_gen_data=None):
         db_alerts=db_alerts
     )
 
+    h.var_checker("candidate_alerts_list", candidate_alerts_list, True)
 
-
-
+    # return jsonify(candidate_alerts_list)
 
 if __name__ == "__main__":
     main()
