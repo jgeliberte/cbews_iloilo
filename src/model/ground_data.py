@@ -1,5 +1,6 @@
 from src.model.helper.utils import DatabaseConnection as DB
 from datetime import datetime as dt
+from src.api.helpers import Helpers
 
 class GroundData():
 
@@ -13,6 +14,7 @@ class GroundData():
         result = DB.db_read(query, schema)
         return result
 
+
     def fetch_surficial_markers(site_id):
         query = f'SELECT marker_id, marker_name ' \
             f'FROM senslopedb.site_markers INNER JOIN commons_db.sites USING (site_id) ' \
@@ -22,11 +24,13 @@ class GroundData():
         result = DB.db_read(query, schema)
         return result
 
+
     def update_surficial_marker_values(mo_id, marker_id, value):
         query = f'UPDATE marker_data set measurement="{value}" WHERE marker_id = "{marker_id}" AND mo_id = "{mo_id}";'
         result = DB.db_modify(query, 'senslopedb', True)
         return result
     
+
     def update_surficial_marker_observation(mo_id, ts, weather, observer, site_id):
         try:
             query = f'UPDATE marker_observations SET ts="{ts}", ' \
@@ -38,7 +42,8 @@ class GroundData():
             result = {"status": False, "message": err}
         finally:
             return result
-        
+
+
     def insert_marker_observation(data):
         try:
             (ts, weather, observer, marker_value, site_id) = data.values()
@@ -51,17 +56,20 @@ class GroundData():
         finally:
             return result
 
+
     def fetch_marker_ids_v_moid(mo_id):
         query = f'SELECT marker_id, marker_name FROM senslopedb.marker_data ' \
             f'INNER JOIN senslopedb.marker_names ON marker_id = name_id where mo_id = "{mo_id}";'
         result = DB.db_read(query, 'senslopedb')
         return result
 
+
     def fetch_surficial_mo_id(ts, site_id):
         query = f'SELECT mo_id FROM senslopedb.marker_observations WHERE ts = "{ts}" and site_id = "{site_id}" limit 1;'
         schema = DB.db_switcher(site_id)
         result = DB.db_read(query, schema)
         return result
+
 
     def insert_marker_values(id, value, mo_id):
         try:
@@ -72,6 +80,7 @@ class GroundData():
             result = {"status": False, "message": err}
         finally:
             return result
+
 
     def delete_marker_observation(surficial_data):
         try:
@@ -94,6 +103,7 @@ class GroundData():
         finally:
             return result
 
+
     def delete_marker_values(mo_id):
         try:
             query = f'DELETE FROM marker_data WHERE mo_id = "{mo_id}"'
@@ -103,6 +113,7 @@ class GroundData():
             result = {"status": False, "message": "Failed to delete surficial data."}      
         finally:
             return result
+
 
     def fetch_moms(site_id):
         try:
@@ -114,6 +125,7 @@ class GroundData():
             result = {"status": False, "message": "Failed to delete surficial data."} 
         finally:
             return result
+
 
     def insert_moms_instance(site_id, feature_id, feature_name, 
                             location, reporter):
@@ -127,17 +139,39 @@ class GroundData():
             result = {"status": False, "message": "Failed to add MoMs data."}      
         finally:
             return result
-    
-    def insert_moms_record(instance, ts, user_id, description):
+
+
+    def insert_moms_record(instance, ts, remarks,
+                            reporter_id, alert_level=0, validator_id=None):
+        """
+        Inserts monitoring_moms row
+
+        Args:
+            instance (int) - instance_id of the feature to be reported
+            ts (str/datetime) - observance_ts of the moms report
+            remarks (str) - remarks of the moms report
+            reporter_id (int) - in CBEWSL, one reporter and
+                                validator is enough - user_id
+            alert_level (int) - op_trigger of the moms report
+            validator_id (int) - in CBEWSL, one reporter and
+                                validator is enough - user_id
+        """
         try:
-            query = f'INSERT INTO monitoring_moms VALUES (0, {instance}, "{ts}", ' \
-                    f'{user_id}, "{description}", "", 18)'
+            if isinstance(ts, str):
+                ts = Helpers.str_to_dt(ts)
+            if not validator_id:
+                validator = reporter_id
+            query = "INSERT INTO monitoring_moms "
+            query += "(instance_id, observance_ts, reporter_id, remarks, validator, op_trigger)"
+            query += f"VALUES ({instance}, {ts}, {reporter_id}, {remarks}, {validator}, {alert_level})"
+
             status = DB.db_modify(query, 'senslopedb', True)
             result = {"status": True, "data": status}
         except Exception as err:
             result = {"status": False, "message": f"Failed to add MoMs Record data. Error: {err}"}      
         finally:
             return result
+
 
     def fetch_feature_name(feature_id, feature, site_id):
         try:
