@@ -52,4 +52,10 @@ def create_app():
     from src.api.alert_generation.public_alerts import PUBLIC_ALERTS_BLUEPRINT
     app.register_blueprint(PUBLIC_ALERTS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.data_analysis.rainfall_analysis import RAINFALL_ANALYSIS_BLUEPRINT
+    app.register_blueprint(RAINFALL_ANALYSIS_BLUEPRINT, url_prefix="/api")
+
+    from src.api.data_analysis.surficial_analysis import SURFICIAL_ANALYSIS_BLUEPRINT
+    app.register_blueprint(SURFICIAL_ANALYSIS_BLUEPRINT, url_prefix="/api")
+
     return app

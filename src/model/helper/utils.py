@@ -14,8 +14,8 @@ class DatabaseConnection():
     def db_connect(schema):
         try:
             #Static for now
-            db = MySQLdb.connect('192.168.150.100',
-                                    'cbews_sys',
+            db = MySQLdb.connect('dynaslope.phivolcs.dost.gov.ph',
+                                    'cbewsl',
                                     'cb3wsls3rv3r', schema)
             cur = db.cursor()
             return db, cur

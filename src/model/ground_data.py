@@ -13,6 +13,13 @@ class GroundData():
         result = DB.db_read(query, schema)
         return result
 
+    def fetch_surficial_plot_data(marker_name, site_code, start, end):
+        query = f'SELECT ts,  , displacement FROM senslopedb.marker_measurements ' \
+                f'WHERE marker_name="{marker_name}" AND site_code ="{site_code}" and (ts BETWEEN "{start}" and "{end}")'
+        print(query)
+        result = DB.db_read(query, 'senslopedb')
+        return result
+
     def fetch_surficial_markers(site_id):
         query = f'SELECT marker_id, marker_name ' \
             f'FROM senslopedb.site_markers INNER JOIN commons_db.sites USING (site_id) ' \
