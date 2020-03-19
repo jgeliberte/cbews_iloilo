@@ -3,6 +3,7 @@ from connections import SOCKETIO
 import sys, json
 from datetime import datetime as dt, timedelta
 from src.model.alert_generation import AlertGeneration
+from src.model.public_alert_table import PublicAlertTable as PAT
 from src.model.users import Users
 from src.api.helpers import Helpers as h
 
@@ -223,3 +224,133 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
         return jsonify(alerts_list)
     else:
         return json.dumps(alerts_list)
+
+
+#############################
+# insert_ewi util functions #
+#############################
+
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
+def adjust_bulletin_number(site_id):
+    """
+    Returns updated bulletin number.
+    """
+    try:
+        bulletin_number = PAT.fetch_site_bulletin_number(site_id=50)
+        H.var_checker("bulletin_number", bulletin_number, True)
+        new_bulletin_number = PAT.update_bulletin_number(site_id=50, bulletin_number=bulletin_number+1)
+        H.var_checker("new_bulletin_number", new_bulletin_number, True)
+
+        response = {
+            "status": True,
+            "data": moms_list
+        }
+    except Exception as err:
+        print(err)
+        response = {
+            "status": False,
+            "data": moms_list
+        }
+    return "new_bulletin_number"
+
+
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
+def insert_ewi():
+    """
+    """
+    json_data = request.get_json()
+    h.var_checker("insert_ewi json_data", json_data, True)
+
+    try:
+        site_id = json_data["site_id"]
+    except KeyError:
+        site_code = json_data["site_code"]
+        # TODO
+        site_id = 50
+
+    data_ts = json_data["data_ts"]
+    release_time = json_data["release_time"]
+    comments = json_data["comments"]
+    reporter_id_mt = json["reporter_id_mt"]
+    reporter_id_ct = json["reporter_id_ct"]
+
+    release_id = None
+    validity = None
+    update_event_container = {}
+    # For routine sites
+    release_list = []
+
+    release_dict = {
+        "data_ts": data_ts, 
+        "release_time": release_time,
+        "comments": comments,
+        "reporter_id_mt": reporter_id_mt,
+        "reporter_id_ct": reporter_id_ct
+    }
+
+    status = json_data["status"]
+    if status == "routine":
+        for routine_entry in json_data["routine_list"]:
+            event_id = PAT.insert_public_alert_event(
+                site_id=site_id, event_start=data_ts, latest_rel_id=None,
+                latest_trig_id=None, validity=validity, status=status
+            )
+            H.var_checker("event_id", event_id, True)
+
+            release_dict["event_id"] = event_id
+            release_dict["internal_alert_level"] = routine_entry["internal_alert"]
+            release_dict["bulletin_number"] = adjust_bulletin_number(site_id=site_id)
+
+            release_list.append(release_dict)
+    
+    else:
+        release_dict["internal_alert_level"] = json_data["internal_alert_level"]
+        release_dict["bulletin_number"] = json_data["bulletin_number"]
+
+        if status == "new":
+            event_id = PAT.insert_public_alert_event(
+                site_id=site_id, event_start=data_ts, latest_rel_id=None,
+                latest_trig_id=None, validity=validity, status=status
+            )
+            release_dict["event_id"] = event_id
+            try:
+                previous_event_id = json_data["previous_event_id"]
+                if previous_event_id:
+                    PAT.update_public_alert_event({
+                        "status": "finished"
+                    }, {
+                        "event_id": previous_event_id
+                    })
+            except KeyError:
+                pass
+                
+        else:
+            event_id = json_data["current_event_id"]
+            release_dict["event_id"] = event_id
+
+            validity = AlertGeneration.get_public_alert_event_validity(event_id)
+
+            if status in ["extended", "invalid", "finished"]:
+                update_event_container["status"] = status
+        
+        release_list.append(release_dict)
+    
+    for release_dict in release_list:
+        release_id = PAT.insert_public_alert_release(
+            event_id=release_dict["event_id"],
+            data_ts=release_dict["data_ts"],
+            internal_alert=release_dict["internal_alert_level"],
+            release_time=release_dict["release_time"],
+            comments=release_dict["comments"],
+            bulletin_number=release_dict["bulletin_number"],
+            reporter_id_mt=release_dict["reporter_id_mt"],
+            reporter_id_ct=release_dict["reporter_id_ct"]
+        )
+
+        if status == "routine":
+            event_id = release_dict["event_id"]
+        elif status in ["new", "on-going"]:
+            if "extend_ND" in json_data or "extend_rain_x" in json_data:
+                update_event_container["validity"] = h.str_to_dt(validity) + timedelta(hours=4)
+            else:
+                return_list
