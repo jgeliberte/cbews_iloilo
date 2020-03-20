@@ -9,7 +9,7 @@ from src.model.ground_data import GroundData
 
 SURFICIAL_ANALYSIS_BLUEPRINT = Blueprint("surficial_analysis_blueprint", __name__)
 
-@SURFICIAL_ANALYSIS_BLUEPRINT.route("data_analysis/surficial/plot/data/<site_code>", methods=["GET"])
+@SURFICIAL_ANALYSIS_BLUEPRINT.route("/data_analysis/surficial/plot/data/<site_code>", methods=["GET"])
 def fetch(site_code):
     plot_data = []
     surficial_plot = []
@@ -27,7 +27,7 @@ def fetch(site_code):
         surficial_plot_data = GroundData.fetch_surficial_plot_data(marker[0], site_code, ts_start, ts_end)
         for row in surficial_plot_data:
             prelim_data['data'].append({
-                'x': str(row[3]),
+                'x': row[3].timestamp(),
                 'y': row[4],
                 'data_id': row[1],
                 'mo_id': row[0], 
