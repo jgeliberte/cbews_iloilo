@@ -230,6 +230,8 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 # insert_ewi util functions #
 #############################
 
+
+
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
 def adjust_bulletin_number(site_id):
     """
@@ -241,17 +243,12 @@ def adjust_bulletin_number(site_id):
         new_bulletin_number = PAT.update_bulletin_number(site_id=50, bulletin_number=bulletin_number+1)
         H.var_checker("new_bulletin_number", new_bulletin_number, True)
 
-        response = {
-            "status": True,
-            "data": moms_list
-        }
+        return_data = new_bulletin_number
     except Exception as err:
         print(err)
-        response = {
-            "status": False,
-            "data": moms_list
-        }
-    return "new_bulletin_number"
+        raise
+
+    return return_data
 
 
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
@@ -353,4 +350,5 @@ def insert_ewi():
             if "extend_ND" in json_data or "extend_rain_x" in json_data:
                 update_event_container["validity"] = h.str_to_dt(validity) + timedelta(hours=4)
             else:
-                return_list
+                return_list = save_triggers(json_data, event_id, release_id, validity)
+                update_event_container = update_event_container
