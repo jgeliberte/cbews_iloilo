@@ -1,5 +1,6 @@
 import MySQLdb
 import configparser
+import time
 
 # class DatabaseCredentials():
 # 	def __new__(self, host):
@@ -14,7 +15,7 @@ class DatabaseConnection():
     def db_connect(schema):
         try:
             #Static for now
-            db = MySQLdb.connect('dynaslope.phivolcs.dost.gov.ph',
+            db = MySQLdb.connect('202.90.159.64',
                                     'cbewsl',
                                     'cb3wsls3rv3r', schema)
             cur = db.cursor()

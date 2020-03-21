@@ -106,11 +106,11 @@ def get_latest_trigger(entry):
     max = None
     for index, retrig in enumerate(retriggers):
         if max:
-            ts = max["ts"]
+            ts = h.str_to_dt(max["ts"])
             if isinstance(max["ts"], str):
                 ts = h.str_to_dt(max["ts"])
 
-        if not max or ts < retriggers[index]["ts"]:
+        if not max or ts < h.str_to_dt(retriggers[index]["ts"]):
             max = retriggers[index]
     return {
         "latest_trigger_timestamp": max["ts"],
@@ -353,7 +353,8 @@ def process_candidate_alerts(generated_alerts, db_alerts):
     candidate_alerts_list.extend(extended_return)
 
     excluded_indexes_list = lowering_indexes_list + extended_indexes_list
-    return_list = prepare_sites_for_routine_release(no_alerts, extended_indexes_list, invalid_entries)
+    if no_alerts:
+        return_list = prepare_sites_for_routine_release(no_alerts, extended_indexes_list, invalid_entries)
 
     return candidate_alerts_list
 
