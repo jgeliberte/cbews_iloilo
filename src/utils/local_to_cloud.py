@@ -7,10 +7,10 @@ class LocalToCloud():
     def last_cloud_inbox_id(self):
         temp_ssh = "ssh dynaslope@dynaslope.phivolcs.dost.gov.ph "
         temp_mysql = "\"mysql -ucbewsl -pcb3wsls3rv3r -e'use comms_db; select ts_sms from smsinbox_loggers order by ts_sms desc limit 1'\""
+        print(temp_ssh+temp_mysql)
         proc = subprocess.Popen([temp_ssh+temp_mysql], stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
         temp_last_smslogger_id = out.decode("utf-8").split("\n")
-        print(temp_last_smslogger_id)
         if temp_last_smslogger_id[0] == '':
             temp_last_smslogger_id = 0
         else:
@@ -51,7 +51,8 @@ class LocalToCloud():
     def fetch_latest_local_data(self, inbox_id):
         try:
             db, cur = self.rack_connect('192.168.150.75', 'pysys_local','NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg')
-            a = cur.execute(f'SELECT * FROM smsinbox_loggers WHERE ts_sms > "{inbox_id}" LIMIT 100')
+            query = f'SELECT * FROM smsinbox_loggers WHERE ts_sms > "{inbox_id}" LIMIT 100;'
+            a = cur.execute(query)
             out = []
             if a:
                 out = cur.fetchall()

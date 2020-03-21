@@ -42,14 +42,14 @@ class Helpers():
         """
         if have_spaces:
             print()
-            print(f"===== {var_name} =====")
-            printer = pprint.PrettyPrinter(indent=4)
-            printer.pprint(var)
+            # print(f"===== {var_name} =====")
+            # printer = pprint.PrettyPrinter(indent=4)
+            # printer.pprint(var)
             print()
-        else:
-            print(f"===== {var_name} =====")
-            printer = pprint.PrettyPrinter(indent=4)
-            printer.pprint(var)
+        # else:
+        #     print(f"===== {var_name} =====")
+        #     printer = pprint.PrettyPrinter(indent=4)
+        #     printer.pprint(var)
 
     def str_to_dt(string_value):
         return datetime.strptime(string_value, "%Y-%m-%d %H:%M:%S")
