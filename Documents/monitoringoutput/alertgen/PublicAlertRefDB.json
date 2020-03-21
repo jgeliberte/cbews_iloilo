@@ -1,0 +1,40 @@
+[
+    {
+        "invalids": [],
+        "alerts": [
+            {
+                "ts": "2020-03-17 13:30:00",
+                "site_id": 50,
+                "site_code": "umi",
+                "public_alert": "A2",
+                "internal_alert": "A2-s0m0R0",
+                "validity": "2020-03-18 16:00:00",
+                "subsurface": [],
+                "surficial": "nd",
+                "rainfall": "nd",
+                "moms": "ND",
+                "triggers": [
+                    {
+                        "trigger_id": 122213,
+                        "alert": "L2",
+                        "ts": "2020-03-17 13:30:00"
+                    },
+                    {
+                        "trigger_id": 122205,
+                        "alert": "M2",
+                        "ts": "2020-03-17 07:30:00"
+                    },
+                    {
+                        "trigger_id": 122206,
+                        "alert": "r1",
+                        "ts": "2020-03-17 06:30:00"
+                    }
+                ],
+                "tech_info": {
+                    "rainfall": "RAIN UMIG: 1-day cumulative rainfall (95.00 mm) exceeded threshold (90.00 mm)",
+                    "subsurface": {}
+                }
+            }
+        ]
+    }
+]

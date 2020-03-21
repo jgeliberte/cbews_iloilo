@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, time
+import pprint
 import os
 import pandas as pd
 import sys
@@ -7,28 +8,32 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import querydb as qdb
 import techinfomaker as tech_info_maker
 
-# def release_time(date_time):
-#     """Rounds time to 4/8/12 AM/PM.
 
-#     Args:
-#         date_time (datetime): Timestamp to be rounded off. 04:00 to 07:30 is
-#         rounded off to 8:00, 08:00 to 11:30 to 12:00, etc.
+def var_checker(var_name, var, have_spaces=False):
+    """
+    A function used to check variable value including
+    title and indentation and spacing for faster checking
+    and debugging.
 
-#     Returns:
-#         datetime: Timestamp with time rounded off to 4/8/12 AM/PM.
+    Args:
+    var_name (String): the variable name or title you want display
+    var (variable): variable (any type) to display
+    have_spaces (Boolean): keep False is you dont need spacing for each display.
+    """
+    if have_spaces:
+        print()
+        print(f"===== {var_name} =====")
+        printer = pprint.PrettyPrinter(indent=4)
+        printer.pprint(var)
+        print()
+    else:
+        print(f"===== {var_name} =====")
+        printer = pprint.PrettyPrinter(indent=4)
+        printer.pprint(var)
 
-#     """
+def str_to_dt(string_value):
+    return datetime.strptime(string_value, "%Y-%m-%d %H:%M:%S")
 
-#     time_hour = int(date_time.strftime('%H'))
-
-#     quotient = time_hour / 4
-
-#     if quotient == 5:
-#         date_time = datetime.combine(date_time.date()+timedelta(1), time(0,0))
-#     else:
-#         date_time = datetime.combine(date_time.date(), time((quotient+1)*4,0))
-            
-#     return date_time
 
 # LOUIE - disabled original code for rounding timestamp to release times.
 def release_time(date_time):
@@ -84,6 +89,52 @@ def round_data_ts(date_time):
     date_time = datetime.combine(date_time.date(), time(hour, minute))
     
     return date_time
+
+
+def check_if_has_unresolved_moms_instance(site_moms_alerts_df):
+    """
+    ASK MERYLL IF CORRECT
+    """
+    unresolved = []
+    if not site_moms_alerts_df.empty:
+        unique = site_moms_alerts_df.drop_duplicates(subset="instance_id", keep="first", inplace=False)
+        unresolved = unique.loc[unique["op_trigger"] >= 2, :]
+
+    return unresolved, len(unresolved) > 0
+
+
+def get_site_moms_alerts(site_id, start, end):
+    """
+    Returns sorted site moms and 
+    highest moms alert level or -1 if no moms is in db
+
+    Args:
+        TODO
+    """
+
+    query = "SELECT * FROM senslopedb.monitoring_moms as moms"
+    query = f"{query} JOIN senslopedb.moms_instances as mi"
+    query = f"{query} ON moms.instance_id = mi.instance_id"
+    query = f"{query} JOIN commons_db.sites as site"
+    query = f"{query} ON mi.site_id = site.site_id"
+    query = f"{query} WHERE site.site_id = {site_id}"
+    query = f"{query} AND moms.observance_ts >= '{start}'"
+    query = f"{query} AND moms.observance_ts <= '{end}'"
+    query = f"{query} ORDER BY moms.observance_ts DESC"
+
+    site_moms_alerts_df = qdb.get_db_dataframe(query)
+    sorted_df = site_moms_alerts_df.sort_values(['op_trigger'], ascending=[False])
+
+    moms_op_trigger = 0
+    if not sorted_df.empty:
+        # var_checker("sorted_df", sorted_df.iloc[0], True)
+        moms_op_trigger = sorted_df.iloc[0]["op_trigger"]
+        # var_checker("moms_op_trigger", moms_op_trigger, True)
+    else:
+        moms_op_trigger = -1
+
+    return site_moms_alerts_df, moms_op_trigger
+
 
 def get_public_symbols():
     """Dataframe containing public alert level and its corresponding symbol.
@@ -254,6 +305,7 @@ def get_operational_trigger(site_id, start_monitor, end):
     
     return op_trigger
 
+
 def nd_internal_alert(no_data, internal_df, internal_symbols):
     """Internal alert sysmbol for event triggers that currently has no data.
 
@@ -269,13 +321,16 @@ def nd_internal_alert(no_data, internal_df, internal_symbols):
 
     source_id = no_data['source_id'].values[0]
     alert_level = no_data['alert_level'].values[0]
+    
     max_alert_level = max(internal_symbols[internal_symbols.source_id == \
                                            source_id]['alert_level'].values)
+
     if alert_level < max_alert_level:
-        internal_df.loc[internal_df.source_id == source_id, 'alert_symbol'] = \
-                        internal_df[internal_df.source_id == \
-                        source_id]['alert_symbol'].values[0].lower()
+        lower_symbol = internal_df[internal_df.source_id == source_id]['alert_symbol'].values[0].lower()
+        internal_df.loc[internal_df.source_id == source_id, 'alert_symbol'] = lower_symbol
+
     return internal_df
+
 
 def get_internal_alert(pos_trig, release_op_trig, internal_symbols):
     """Current internal alert sysmbol: indicates event triggers and operational
@@ -320,12 +375,18 @@ def get_internal_alert(pos_trig, release_op_trig, internal_symbols):
     internal_df = internal_symbols[(internal_symbols.trigger_sym_id.isin(sym_id)) \
             | ((internal_symbols.source_id.isin(nd_source_id)) & \
                (internal_symbols.alert_level == -1))]
+    
+    # REPLACE NO DATA TRIGGERS
     if len(no_data) != 0:
         no_data_grp = no_data.groupby('source_id', as_index=False)
+        # var_checker("INTERNAL DF BEFORE ND", internal_df, True)
         internal_df = no_data_grp.apply(nd_internal_alert,
                                         internal_df=internal_df,
                                         internal_symbols=internal_symbols)
-    internal_df = internal_df.drop_duplicates()
+    
+    # var_checker("INTERNAL DF AFTER ND", internal_df, True)
+    # NOTE: LOUIE CHANGES FILTERS ON NO DATA. PACHECK KAY MERYLL
+    internal_df = internal_df.drop_duplicates(subset = 'source_id', keep = 'last')
     internal_df = internal_df.reset_index(drop=True)
     
     return internal_df
@@ -485,8 +546,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     site_code = site_props['site_code'].values[0]
     site_id = site_props['site_id'].values[0]
     # LOUIE
-    print(site_code)
-    # qdb.print_out(site_code)
+    print({f"Site Code: {site_code.upper()}"})
 
     # Creates a public_alerts table if it doesn't exist yet
     if qdb.does_table_exist('public_alerts') == False:
@@ -505,6 +565,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # operational triggers for monitoring at timestamp end
     op_trig = get_operational_trigger(site_id, start_monitor, end)
+
     release_op_trig = op_trig[op_trig.ts_updated >= \
             release_time(end)-timedelta(hours=4)]
     release_op_trig = release_op_trig.drop_duplicates(['source_id', \
@@ -513,6 +574,9 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
             'subsurface']['source_id'].values[0]
     surficial_id = internal_symbols[internal_symbols.trigger_source == \
             'surficial']['source_id'].values[0]
+    moms_id = internal_symbols[internal_symbols.trigger_source == \
+            'moms']['source_id'].values[0]
+
     release_op_trig = release_op_trig[~((release_op_trig.source_id \
             == subsurface_id) & (release_op_trig.ts_updated < end))]
     pos_trig = op_trig[(op_trig.alert_level > 0) & ~((op_trig.alert_level == 1) \
@@ -522,28 +586,48 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # public alert based on highest alert level in operational triggers
     public_alert = max(list(pos_trig['alert_level'].values) + [0])
-    # LOUIE
-    print('Public Alert %s' %public_alert)
     print()
-    # qdb.print_out('Public Alert %s' %public_alert)
+    print('Public Alert %s' %public_alert)   
+    print()
 
-    # subsurface alert
+    # SUBSURFACE ALERT
     subsurface = get_tsm_alert(site_id, end)
 
-    # surficial alert
+    # SURFICIAL ALERT
     if public_alert > 0:
         surficial_ts = release_time(end) - timedelta(hours=4)
     else:
         surficial_ts = pd.to_datetime(end.date())
-    surficial_id = internal_symbols[internal_symbols.trigger_source == \
-            'surficial']['source_id'].values[0]
+
     try:
         surficial = op_trig[(op_trig.source_id == surficial_id) & \
-                 (op_trig.ts_updated >= surficial_ts)]['alert_level'].values[0]
+            (op_trig.ts_updated >= surficial_ts)]['alert_level'].values[0]
     except:
         surficial = -1
-            
-    # rainfall alert
+
+
+    # MOMS ALERT NOTE: Following code is redundant with above
+    # TODO: LOUIE 
+    if public_alert > 0:
+        moms_ts = release_time(end) - timedelta(hours=4)
+    else:
+        moms_ts = pd.to_datetime(end.date())
+    
+    try:
+        moms_alert = op_trig[(op_trig.source_id == moms_id) & \
+                 (op_trig.ts_updated >= moms_ts)]['alert_level'].values[0]
+    except:
+        moms_alert = -1
+
+    # NOTE: LOUIE
+    # Get moms from database sorted by obs_ts and highest alert level
+    sorted_ma_df, moms_alert_level = get_site_moms_alerts(
+                                        site_id=site_id,
+                                        start=moms_ts,
+                                        end=release_time(end))
+    unresolved_moms_df, has_unresolved_moms = check_if_has_unresolved_moms_instance(sorted_ma_df)
+
+    # RAINFALL ALERT
     rainfall_id = internal_symbols[internal_symbols.trigger_source == \
             'rainfall']['source_id'].values[0]
     try:
@@ -592,10 +676,13 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # ground data presence: subsurface, surficial, moms
     if public_alert <= 1:
-        if surficial == -1 and len(subsurface[subsurface.alert_level != -1]) == 0:
+        # if surficial == -1 and len(subsurface[subsurface.alert_level != -1]) == 0:
+        # NOTE: LOUIE - trial code to include moms
+        if surficial == -1 and moms_alert == -1 and len(subsurface[subsurface.alert_level != -1]) == 0:
             ground_alert = -1
         else:
             ground_alert = 0
+
         if public_alert == 0 or ground_alert == -1:
             pub_internal = internal_symbols[(internal_symbols.alert_level == \
                              ground_alert) & (internal_symbols.source_id == \
@@ -612,6 +699,8 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
         internal_alert = pub_internal + hyphen + internal_alert
     elif -1 in internal_df[internal_df.trigger_source != 'rainfall']['alert_level'].values:
         ground_alert = -1
+    elif has_unresolved_moms:
+        ground_alert = -1
     else:
         ground_alert = 0
 
@@ -623,15 +712,18 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
                         time(23, 30)]
         is_45_minute_beyond = int(start_time.strftime('%M')) > 45
         is_not_yet_write_time = not (is_release_time_run and is_45_minute_beyond)
+        is_within_alert_extension = validity + timedelta(3) > end + timedelta(hours=0.5)
+        has_no_ground_data = ground_alert == -1
         
         # check if end of validity: lower alert if with data and not rain75
         if validity > end + timedelta(hours=0.5):
             pass
         elif rain75_id in internal_df['trigger_sym_id'].values \
-                or validity + timedelta(3) > end + timedelta(hours=0.5) \
-                    and ground_alert == -1 or is_not_yet_write_time:
+                or is_within_alert_extension and has_no_ground_data \
+                    or is_not_yet_write_time \
+                        or is_within_alert_extension and has_unresolved_moms:
             validity = release_time(end)
-            
+
             if is_release_time_run:
                 if not(is_45_minute_beyond):
                     do_not_write_to_db = True
@@ -691,8 +783,8 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
                     'site_code': [site_code], 'public_alert': [public_alert],
                     'internal_alert': [internal_alert], 'validity': [validity],
                     'subsurface': [subsurface], 'surficial': [surficial],
-                    'rainfall': [rainfall], 'triggers': [triggers],
-                    'tech_info': [tech_info]})
+                    'rainfall': [rainfall], 'moms': [moms_alert],
+                    'triggers': [triggers], 'tech_info': [tech_info]})
 
     # writes public alert to database
     pub_sym_id =  public_symbols[public_symbols.alert_level == \
@@ -709,7 +801,8 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     try:
         do_not_write_to_db
     except:
-        qdb.alert_to_db(site_public_df, 'public_alerts')
+        print("")
+        # qdb.alert_to_db(site_public_df, 'public_alerts')
     
     return public_df
 
@@ -768,20 +861,25 @@ def main(end=datetime.now()):
     # site id and code
     query = "SELECT site_id, site_code FROM commons_db.sites WHERE active = 1"
     props = qdb.get_db_dataframe(query)
-#    props = props[props.site_code == 'dad']
+    props = props[props.site_code == 'umi']
     site_props = props.groupby('site_id', as_index=False)
-    
     alerts = site_props.apply(site_public_alert, end=end,
                               public_symbols=public_symbols,
                               internal_symbols=internal_symbols, 
                               start_time=start_time).reset_index(drop=True)
 
     alerts = alerts.sort_values(['public_alert', 'site_code'], ascending=[False, True])
+    try:
+        var_checker("alerts", alerts.iloc[0]["triggers"], True)
+        # var_checker("alerts", alerts.loc(alerts["triggers"]), True)
+    except Exception as err:
+        print(err)
 
     # map alert level to alert symbol
     alerts['public_alert'] = alerts['public_alert'].map(pub_map)
     alerts['rainfall'] = alerts['rainfall'].map(rain_map)
     alerts['surficial'] = alerts['surficial'].map(surficial_map)
+    alerts['moms'] = alerts['moms'].map(moms_map)
     site_alerts = alerts.groupby('site_code', as_index=False)
     alerts = site_alerts.apply(subsurface_sym,
                                sym_map=subsurface_map).reset_index(drop=True)
@@ -820,14 +918,14 @@ def main(end=datetime.now()):
     if not os.path.exists(output_path+sc['fileio']['output_path']):
         os.makedirs(output_path+sc['fileio']['output_path'])
     
-    print(output_path+sc['fileio']['output_path'])
+    print(output_path)
 
     with open(output_path+sc['fileio']['output_path']+'PublicAlertRefDB.json', 'w') as w:
         w.write(public_json)
 
     # LOUIE
+    print(f"PublicAlertRefDB.json written at {output_path+sc['fileio']['output_path']}")
     print('runtime = %s' %(datetime.now() - start_time))
-    # qdb.print_out('runtime = %s' %(datetime.now() - start_time))
     
     return alerts
 
