@@ -187,6 +187,18 @@ def get_trigger_symbols():
     
     return trig_symbols
 
+
+def get_moms_feature_types():
+    """Dataframe containing moms feature types for use in tech info
+    """
+
+    query = "SELECT feature_id, feature_type FROM moms_features"
+
+    moms_types = qdb.get_db_dataframe(query)
+
+    return moms_types
+
+
 def event_start(site_id, end):
     """Timestamp of start of event monitoring. Start of event is computed
     by checking if event progresses from non A0 to higher alert.
@@ -840,9 +852,9 @@ def main(end=datetime.now()):
     # public alert
     public_symbols = get_public_symbols()
     pub_map = alert_map(public_symbols)
-    # internal alert
+    # internal alert symbols
     internal_symbols = get_internal_symbols()
-    # operational triggers
+    # operational triggers symbols
     trig_symbols = get_trigger_symbols()
     # subsurface alert
     subsurface_map = trig_symbols[trig_symbols.trigger_source == 'subsurface']
