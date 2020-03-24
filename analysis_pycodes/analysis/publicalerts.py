@@ -760,12 +760,13 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     # most recent retrigger of positive operational triggers
     try:
         #last positive retriggger/s
-        triggers = last_pos_trig[['trigger_id', 'alert_symbol', 'ts_updated']]
+        var_checker("last_pos_trig", last_pos_trig, True)
+        triggers = last_pos_trig[['trigger_id', 'alert_symbol', 'ts_updated', 'trigger_sym_id', 'source_id', 'alert_level']]
         triggers = triggers.rename(columns = {'alert_symbol': 'alert', \
                 'ts_updated': 'ts'})
         triggers['ts'] = triggers['ts'].apply(lambda x: str(x))
     except:
-        triggers = pd.DataFrame(columns=['trigger_id', 'alert', 'ts'])
+        triggers = pd.DataFrame(columns=['trigger_id', 'alert', 'ts', 'trigger_sym_id', 'source_id', 'alert_level'])
      
     #technical info for bulletin release
     try:
