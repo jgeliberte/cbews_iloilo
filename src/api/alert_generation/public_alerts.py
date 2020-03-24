@@ -211,7 +211,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
             "message": "Success",
             "data": active_events_dict
         }
-        h.var_checker("active_events_dict", active_events_dict, True)
+        # h.var_checker("active_events_dict", active_events_dict, True)
 
     except Exception as err:
         raise err
@@ -230,9 +230,12 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 # insert_ewi util functions #
 #############################
 
+def save_triggers(json_data, event_id, release_id, current_validity):
+    """
+    """
+    print()
 
 
-@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
 def adjust_bulletin_number(site_id):
     """
     Returns updated bulletin number.

@@ -99,12 +99,10 @@ class AlertGeneration():
             query = f"{query} INNER JOIN commons_db.sites USING (site_id)"
         query = f"{query} WHERE public_alert_event.event_id = {event_id}"
 
-        print(query)
         # schema = DB.db_switcher("senslopedb")
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        print(result)
         return result
 
 
@@ -216,15 +214,15 @@ class AlertGeneration():
         return result
 
 
-    def get_internal_alert_symbol_row(trigger_type, return_col=None):
+    def get_internal_alert_symbol_row(trigger_type=None, trigger_symbol=None, return_col=None):
         """
         Util miniquery
         """
         H = Helpers
         select_option = f"internal_sym_id, \
                     ias.trigger_sym_id, \
-                    ias.alert_symbol, \
-                    ots.alert_symbol, \
+                    ias.alert_symbol as ots_symbol, \
+                    ots.alert_symbol as alert_symbol, \
                     ots.alert_description, \
                     ots.alert_level, \
                     trigger_source"
@@ -237,15 +235,16 @@ class AlertGeneration():
                     "INNER JOIN " + \
                 "trigger_hierarchies th USING (source_id)"
 
-        query = f"{query} WHERE ias.alert_symbol = '{trigger_type}'"
-        H.var_checker("get_internal_alert_symbol_row query", query, True)
-        H.var_checker("type query", type(query), True)
+        if trigger_type:
+            query = f"{query} WHERE ias.alert_symbol = '{trigger_type}'"
+        else:
+            if trigger_symbol:
+                query = f"{query} WHERE ots.alert_symbol = '{trigger_symbol}'"
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
         if return_col:
-            print(result)
             result = result[0][0]
 
         return result
@@ -271,3 +270,22 @@ class AlertGeneration():
         result = DB.db_read(query, schema)
 
         return result[0]
+
+
+    def get_trigger_hierarchy(source_id, return_col=None):
+        H = Helpers
+        select_option = "*"
+        if return_col:
+            select_option = return_col
+
+        query = f"SELECT {select_option} FROM trigger_hierarchies"
+        query = f"{query} WHERE source_id = {source_id}"
+        schema = "senslopedb"
+        result = DB.db_read(query, schema)
+        
+        return_data = result[0]
+        if return_col:
+            return_data = result[0][0]
+
+        return return_data
+        

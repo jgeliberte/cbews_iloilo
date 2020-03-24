@@ -74,7 +74,6 @@ def add():
                 trig_sym_id=trigger_sym_id,
                 ts_updated=ts_updated
             )
-            H.var_checker("result", result, True)
 
         if moms_id['status'] == True:
             moms = {

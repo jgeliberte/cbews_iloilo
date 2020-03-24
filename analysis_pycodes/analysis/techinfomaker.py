@@ -3,7 +3,7 @@ from pprint import pprint
 import os
 import pandas as pd
 import sys
-from publicalerts import release_time
+from publicalerts import release_time, var_checker, get_moms_feature_types
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import querydb as qdb
@@ -221,18 +221,21 @@ def get_surficial_tech_info(site_id, latest_trigger_ts):
         raise
 
 
-def formulate_moms_tech_info(alert_detail):
+def formulate_moms_tech_info(alert_detail, moms_type_df):
     try:
         tech_info = []
-        print(vars(alert_detail))
-        # for index, row in alert_detail.iterrows():
-        #     name = row['marker_name']
-        #     disp = row['displacement']
-        #     time = '{:.2f}'.format(row['time_delta'])
-        #     tech_info += ["Marker %s: %s cm difference in %s hours" %(name, disp, time)]
+        moms_tech_info = ""
+        var_checker("alert_detail s", alert_detail.iloc[0], True)
+        for index, row in alert_detail.iterrows():
+            feat_type = moms_type_df[
+                moms_type_df.feature_id == row['feature_id']
+            ]['feature_type'].values[0]
+            var_checker("feat_type", feat_type, True)
+            if index > 0:
+                moms_tech_info += ", "
+            moms_tech_info += f"{feat_type} ({row['feature_name']})"
         
         # moms_tech_info = '; '.join(tech_info)
-        moms_tech_info = ""
         return moms_tech_info
 
     except Exception as err:
@@ -240,9 +243,53 @@ def formulate_moms_tech_info(alert_detail):
         raise
 
 
+# def get_moms_tech_info(moms_alert_details):
+#     """
+#     Sample
+#     """
+#     m2_triggers_features = []
+#     m3_triggers_features = []
+#     moms_tech_info = {}
+#     moms_parts = []
+
+#     for item in moms_alert_details:
+#         feature = item.moms_instance.feature.feature_type
+#         if item.op_trigger == 2:
+#             m2_triggers_features.append(feature)
+#         elif item.op_trigger == 3:
+#             m3_triggers_features.append(feature)
+
+#     significant = ", ".join(m2_triggers_features)
+#     critical = ", ".join(m3_triggers_features)
+
+#     if m2_triggers_features:
+#         significant_word = "significant"
+#         if len(m2_triggers_features) == 1:
+#             significant_word = significant_word.capitalize()
+#         moms_parts.append(f"{significant_word} ({significant})")
+
+#     if m3_triggers_features:
+#         critical_word = "critical"
+#         if len(m3_triggers_features) == 1:
+#             critical_word = critical_word.capitalize()
+#         moms_parts.append(f"{critical_word} ({critical})")
+
+#     multiple = ""
+#     feature = "feature"
+#     if len(moms_alert_details) > 1:
+#         multiple = "Multiple "
+#         feature = "features"
+
+#     day = " and ".join(moms_parts)
+#     moms_tech_info = f"{multiple}{day} {feature} observed in site"
+#     return moms_tech_info
+
+
+
 def get_moms_tech_info(site_id, latest_trigger_ts):
     try:
         alert_detail = query_moms_alerts(site_id, latest_trigger_ts)
+        moms_types_df = get_moms_feature_types()
 
         m2_triggers = alert_detail[(alert_detail.op_trigger == 2)]
         m3_triggers = alert_detail[(alert_detail.op_trigger == 3)]
@@ -251,8 +298,12 @@ def get_moms_tech_info(site_id, latest_trigger_ts):
         group_array = [m2_triggers, m3_triggers]
         for index, group in enumerate(group_array):
             if (len(group) != 0):
-                tech_info = formulate_moms_tech_info(group)
-                moms_tech_info["m" + str(index+2)] = tech_info
+                tech_info = formulate_moms_tech_info(group, moms_types_df)
+                prefix = "Significant ground observation: "
+                if (index + 2) == 3:
+                    prefix = "Critical ground observation: "
+
+                moms_tech_info["m" + str(index+2)] = f"{prefix} {tech_info} found on site."
         return moms_tech_info
     
     except Exception as err:
@@ -276,5 +327,7 @@ def main(trigger_df):
             technical_info['rainfall'] = get_rainfall_tech_info(site_id, latest_trigger_ts)
         elif trigger_source == 'surficial':
             technical_info['surficial'] = get_surficial_tech_info(site_id, latest_trigger_ts)
+        elif trigger_source == 'moms':
+            technical_info['moms'] = get_moms_tech_info(site_id, latest_trigger_ts)
     
     return technical_info

@@ -1,8 +1,10 @@
-import sys, json
+import sys, json, os
 from flask import Blueprint, jsonify, request
 from connections import SOCKETIO
 from datetime import datetime as dt, timedelta
 from src.api.alert_generation.public_alerts import get_ongoing_and_extended_monitoring 
+from config import APP_CONFIG
+from src.model.alert_generation import AlertGeneration as AG
 from src.model.users import Users
 from src.model.sites import Sites
 from src.api.helpers import Helpers as h
@@ -65,17 +67,18 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
                         "trigger": "extended",
                         "validity": "extended"
                     })
+                    x = prepare_candidate_for_release(x)
                     return_arr.append(x)
 
     return return_list, extended_index
 
 
-def tag_sites_for_lowering(merged_arr, no_alerts):
+def tag_sites_for_lowering(merged_list, no_alerts):
     """
     """
     return_arr = []
     lowering_index = []
-    for site in merged_arr:
+    for site in merged_list:
         if not site["for_release"]:
             index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
             x = no_alerts[index]
@@ -90,6 +93,8 @@ def tag_sites_for_lowering(merged_arr, no_alerts):
                     "trigger": "No new triggers",
                     "validity": "end"
                 })
+
+                x = prepare_candidate_for_release(x, merged_list)
                 return_arr.append(x)
     return [return_arr, lowering_index]
 
@@ -183,7 +188,6 @@ def get_all_invalid_triggers_of_site(site_code, invalids_list):
 
 
 def process_with_alerts_entries(with_alerts, merged_list, invalids):
-    h.var_checker("merged_list", merged_list, True)
     candidates_list = []
 
     for w_alert in with_alerts:
@@ -200,7 +204,6 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
         entry["invalid_list"] = []
 
         site_invalids_list = get_all_invalid_triggers_of_site(site_code, invalids)
-        h.var_checker("site_invalids_list", site_invalids_list, True)
 
         is_valid_but_needs_manual = False
         for s_invalid in site_invalids_list:
@@ -308,9 +311,89 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
                 entry["is_manual"] = "manual"
 
         if for_updating:
+            entry = prepare_candidate_for_release(entry, merged_list)
             candidates_list.append(entry)
 
     return candidates_list
+
+
+def prepare_candidate_for_release(candidate, merged_list=None):
+    """
+    """
+    site_code = candidate["site_code"]
+    site_id = candidate["site_id"]
+    new_data_ts = h.str_to_dt(candidate["ts"])
+
+    ########################
+    # CHECK IF NEW RELEASE $
+    ########################
+    # db_alert = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site_code), None)
+    db_alert = next(filter(lambda x: x['site_code'] == site_code, merged_list), None)
+    is_new_release = True
+    if db_alert:
+        latest_saved_data_ts = h.str_to_dt(db_alert["data_ts"])
+        is_ts_already_released = new_data_ts <= latest_saved_data_ts
+        if is_ts_already_released:
+            is_new_release = False
+
+    #########################
+    # CHECK IF RELEASE TIME #
+    #########################
+    scheduled_release_time = h.round_to_nearest_release_time(new_data_ts)
+    start_ts = scheduled_release_time - timedelta(minutes=30)
+    # NOTE: allows 8, 12, 16, 20, 23, 3 timestamp release
+    is_release_time = False
+    if start_ts < new_data_ts <= scheduled_release_time:
+        is_release_time = True
+    else:
+        if is_new_release:
+            is_release_time = True
+
+    ###########################################
+    # PREPARE TRIGGERS FOR RELEASE.           #
+    # CHECK IF TRIGGERS WERE ALREADY RELEASED #
+    ###########################################
+    raw_triggers = candidate["triggers"]
+    tech_info_dict = candidate["tech_info"]
+    new_trigger_list = []
+    for trigger in raw_triggers:
+        source_id = trigger["source_id"]
+        trigger_source = AG.get_trigger_hierarchy(source_id, "trigger_source")
+        ots_symbol = trigger["alert"]
+        trigger_type = AG.get_internal_alert_symbol_row(trigger_symbol=ots_symbol, return_col="ias.alert_symbol")
+        tech_info = tech_info_dict[trigger_source]
+
+        trigger_payload = {
+            "trigger_type": trigger_type,
+            "timestamp": trigger["ts"],
+            "info": tech_info,
+            "trigger_sym_id": trigger["trigger_sym_id"],
+            "source_id": source_id,
+            "alert_level": trigger["alert_level"],
+            "trigger_id": trigger["trigger_id"],
+            "ots_symbol": ots_symbol
+        }
+
+        new_trigger_list.append(trigger_payload)
+
+
+
+    # h.var_checker("event_triggers", event_triggers, True)
+    # rel_trigs = identify_release_triggers(raw_triggers, tech_info)
+    
+    release_related_attributes = {
+        "release_time": h.dt_to_str(dt.now()),
+        "data_ts": candidate["ts"],
+        "release_triggers": new_trigger_list,
+        "public_alert_level": int(candidate["public_alert"][1]),
+        "internal_alert": candidate["internal_alert"],
+        "public_alert": candidate["public_alert"],
+        "is_release_time": is_release_time, 
+        "is_new_release": is_new_release
+    }
+    candidate.update(release_related_attributes)
+    return candidate
+
 
 def separate_with_alerts_to_no_alerts_on_JSON(alerts_list):
     no_alerts = []
@@ -360,6 +443,7 @@ def process_candidate_alerts(generated_alerts, db_alerts):
 
 
 def main(internal_gen_data=None):
+    start_time = dt.now()
     generated_alerts_dict = []
     if internal_gen_data:
         generated_alerts_dict = internal_gen_data
@@ -376,16 +460,25 @@ def main(internal_gen_data=None):
     db_alerts = get_ongoing_and_extended_monitoring(source="api")
     db_alerts = json.loads(db_alerts)["data"]
 
-    h.var_checker("generated_alerts_dict", generated_alerts_dict, True)
-
     candidate_alerts_list = process_candidate_alerts(
         generated_alerts=generated_alerts_dict,
         db_alerts=db_alerts
     )
 
-    h.var_checker("candidate_alerts_list", candidate_alerts_list, True)
+    json_data = json.dumps(candidate_alerts_list)
 
-    # return jsonify(candidate_alerts_list)
+    directory = APP_CONFIG['CANDIDATE_DIR']
+    # h.var_checker("directory", directory, True)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(directory + "/candidate_alerts.json", "w") as file_path:
+        file_path.write(json_data)
+
+    print(f"candidate_alerts.json written at {directory}")
+    print('runtime = %s' %(dt.now() - start_time))
+
+    # return candidate_alerts_list
 
 if __name__ == "__main__":
     main()
