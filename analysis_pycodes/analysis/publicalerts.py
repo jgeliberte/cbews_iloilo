@@ -127,9 +127,7 @@ def get_site_moms_alerts(site_id, start, end):
 
     moms_op_trigger = 0
     if not sorted_df.empty:
-        # var_checker("sorted_df", sorted_df.iloc[0], True)
         moms_op_trigger = sorted_df.iloc[0]["op_trigger"]
-        # var_checker("moms_op_trigger", moms_op_trigger, True)
     else:
         moms_op_trigger = -1
 
@@ -391,12 +389,10 @@ def get_internal_alert(pos_trig, release_op_trig, internal_symbols):
     # REPLACE NO DATA TRIGGERS
     if len(no_data) != 0:
         no_data_grp = no_data.groupby('source_id', as_index=False)
-        # var_checker("INTERNAL DF BEFORE ND", internal_df, True)
         internal_df = no_data_grp.apply(nd_internal_alert,
                                         internal_df=internal_df,
                                         internal_symbols=internal_symbols)
     
-    # var_checker("INTERNAL DF AFTER ND", internal_df, True)
     # NOTE: LOUIE CHANGES FILTERS ON NO DATA. PACHECK KAY MERYLL
     internal_df = internal_df.drop_duplicates(subset = 'source_id', keep = 'last')
     internal_df = internal_df.reset_index(drop=True)
@@ -760,7 +756,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     # most recent retrigger of positive operational triggers
     try:
         #last positive retriggger/s
-        var_checker("last_pos_trig", last_pos_trig, True)
         triggers = last_pos_trig[['trigger_id', 'alert_symbol', 'ts_updated', 'trigger_sym_id', 'source_id', 'alert_level']]
         triggers = triggers.rename(columns = {'alert_symbol': 'alert', \
                 'ts_updated': 'ts'})
@@ -882,11 +877,6 @@ def main(end=datetime.now()):
                               start_time=start_time).reset_index(drop=True)
 
     alerts = alerts.sort_values(['public_alert', 'site_code'], ascending=[False, True])
-    try:
-        var_checker("alerts", alerts.iloc[0]["triggers"], True)
-        # var_checker("alerts", alerts.loc(alerts["triggers"]), True)
-    except Exception as err:
-        print(err)
 
     # map alert level to alert symbol
     alerts['public_alert'] = alerts['public_alert'].map(pub_map)

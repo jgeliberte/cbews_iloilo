@@ -225,12 +225,10 @@ def formulate_moms_tech_info(alert_detail, moms_type_df):
     try:
         tech_info = []
         moms_tech_info = ""
-        var_checker("alert_detail s", alert_detail.iloc[0], True)
         for index, row in alert_detail.iterrows():
             feat_type = moms_type_df[
                 moms_type_df.feature_id == row['feature_id']
             ]['feature_type'].values[0]
-            var_checker("feat_type", feat_type, True)
             if index > 0:
                 moms_tech_info += ", "
             moms_tech_info += f"{feat_type} ({row['feature_name']})"
