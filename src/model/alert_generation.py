@@ -4,9 +4,14 @@ from src.api.helpers import Helpers
 
 class AlertGeneration():
 
-    def insert_operational_trigger(site_id, trig_sym_id, ts_updated):
+    def validate_operational_trigger(trigger_id):
         """
-        Inserts operational_trigger table entry.
+        """
+        print("test")
+
+
+    def insert_operational_trigger(site_id, trig_sym_id, ts_updated):
+        """Inserts operational_trigger table entry.
 
         Args:
             site_id (int) - where will the trigger be associated

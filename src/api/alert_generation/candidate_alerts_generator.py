@@ -2,7 +2,7 @@ import sys, json, os
 from flask import Blueprint, jsonify, request
 from connections import SOCKETIO
 from datetime import datetime as dt, timedelta
-from src.api.alert_generation.public_alerts import get_ongoing_and_extended_monitoring 
+from src.api.alert_generation import public_alerts as PA 
 from config import APP_CONFIG
 from src.model.alert_generation import AlertGeneration as AG
 from src.model.users import Users
@@ -371,7 +371,8 @@ def prepare_candidate_for_release(candidate, merged_list=None):
             "source_id": source_id,
             "alert_level": trigger["alert_level"],
             "trigger_id": trigger["trigger_id"],
-            "ots_symbol": ots_symbol
+            "ots_symbol": ots_symbol,
+            "trigger_source": trigger_source
         }
 
         new_trigger_list.append(trigger_payload)
@@ -457,7 +458,7 @@ def main(internal_gen_data=None):
             generated_alerts_dict = json_file.read()
             generated_alerts_dict = json.loads(generated_alerts_dict)[0]
 
-    db_alerts = get_ongoing_and_extended_monitoring(source="api")
+    db_alerts = PA.get_ongoing_and_extended_monitoring(source="api")
     db_alerts = json.loads(db_alerts)["data"]
 
     candidate_alerts_list = process_candidate_alerts(
@@ -478,7 +479,7 @@ def main(internal_gen_data=None):
     print(f"candidate_alerts.json written at {directory}")
     print('runtime = %s' %(dt.now() - start_time))
 
-    # return candidate_alerts_list
+    return json_data
 
 if __name__ == "__main__":
     main()
