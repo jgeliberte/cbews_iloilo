@@ -29,7 +29,6 @@ def get_haphazard_moms_data_source(tech_info):
     return moms_data_source
 
 def prepare_triggers(row):
-    h.var_checker("ROW", row, True)
     trigger_source = row["trigger_source"]
     info = ""
     if trigger_source == "moms":
@@ -46,47 +45,100 @@ def prepare_triggers(row):
         "date_time": row["timestamp"],
         "trigger": trigger_source.capitalize(),
         "data_source": data_source,
-        "description": info
+        "description": info,
+        "trigger_id": row["trigger_id"]
     }
 
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/UI/get_mar_alert_validation_data", methods=["GET"])
 def get_mar_alert_validation_data():
     """
     """
-    json_data = json.loads(candidate_alerts_generator.main())
-    h.var_checker("json_data", json_data, True)
+    json_data = json.loads(candidate_alerts_generator.main(to_update_pub_alerts=True))
     mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
-    release_triggers = mar_data["release_triggers"]
+    new_rel_trigs = []
+    if mar_data:
+        release_triggers = mar_data["release_triggers"]
 
-    new_rel_trigs = list(map(prepare_triggers, release_triggers))
+        new_rel_trigs = list(map(prepare_triggers, release_triggers))
     
     return jsonify({
         "public_alert_level": mar_data["public_alert_level"],
         "public_alert": mar_data["public_alert"],
         "release_triggers": new_rel_trigs, 
+        "data_ts": mar_data["data_ts"],
+        "is_new_release": mar_data["is_new_release"],
+        "is_release_time": mar_data["is_release_time"],
+        "validity":  mar_data["validity"],
+        "candidate_data": mar_data,
+        "as_of_ts": h.dt_to_str(h.round_down_data_ts(dt.now()))
     })
+
 
 ######################
 # END OF MAR UI APIs #
 ######################
 
 
-@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/validate_trigger/<trigger_id>", methods=["GET"])
-def validate_trigger(trigger_id):
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/validate_trigger", methods=["POST"])
+def validate_trigger():
     """
     """
-    AG = AlertGeneration
+    print("FAK")
+    try:
+        AG = AlertGeneration
+        json_input = request.get_json()
+        h.var_checker("json_input", json_input, True)
+        trigger_id = json_input["trigger_id"]
+        alert_status = json_input["alert_status"]
+        remarks = json_input["remarks"]
+        user_id = json_input["user_id"]
 
-    # FIND IF alert_status row exists for trigger id
-    alert_status = AG.check_alert_status(trigger_id)
+        # FIND IF alert_status row exists for trigger id
+        alert_status_row = AG.fetch_alert_status(AG, trigger_id)
+        now_ts_str = h.dt_to_str(dt.now())
 
-    if alert_status:
-        # If exists, update
-        response = AG.update_alert_status(trigger_id)
-    else:
-        # If not, insert 
-        response = AG.insert_alert_status(trigger_id)
+        if alert_status_row:
+            # If exists, update
+            result = AG.update_alert_status(AG,
+                update_dict={
+                    "alert_status": alert_status,
+                    "remarks": remarks,
+                    "ts_set": now_ts_str,
+                    "ts_ack": now_ts_str,
+                    "user_id": user_id
+                },
+                where_dict={
+                    "trigger_id": trigger_id
+                }
+            )
+        else:
+            # If not, insert
+            alert_id = AG.insert_alert_status(
+                self=AG,
+                trigger_id=trigger_id,
+                ts_last_retrigger=json_input["ts_last_retrigger"],
+                ts_set=now_ts_str,
+                ts_ack=now_ts_str,
+                alert_status=alert_status,
+                remarks=remarks,
+                user_id=user_id
+            )
+            result = alert_id
+        
+        response = {
+            "data": result,
+            "ok": True,
+            "status": 200
+        }
+    except Exception as err:
+        raise(err)
+        response = {
+            "data": None,
+            "ok": False,
+            "status": 404
+        }
 
+    h.var_checker("response", response, True)
     return jsonify(response)
 
 

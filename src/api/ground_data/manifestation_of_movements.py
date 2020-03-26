@@ -54,13 +54,14 @@ def add():
                                     alert_level=alert_level,
                                     return_col="trigger_sym_id")
 
-        op_trig_data_tuple = AlertGen.fetch_recent_operational_trigger(
+        op_trig_data_dict = AlertGen.fetch_recent_operational_trigger(
+            AlertGen,
             site_id=site_id,
             trig_sym_id=trigger_sym_id
         )
 
         # If nothing exists in database:
-        if not op_trig_data_tuple:
+        if not op_trig_data_dict:
             trigger_id = AlertGen.insert_operational_trigger(
                 site_id=site_id,
                 trig_sym_id=trigger_sym_id,
@@ -68,7 +69,7 @@ def add():
             )
         # Else update especially ts in database:
         else:
-            trigger_id = op_trig_data_tuple[0]
+            trigger_id = op_trig_data_dict["trigger_id"]
             result = AlertGen.update_operational_trigger(
                 op_trig_id=trigger_id,
                 trig_sym_id=trigger_sym_id,

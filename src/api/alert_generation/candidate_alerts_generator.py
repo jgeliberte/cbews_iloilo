@@ -183,8 +183,9 @@ def adjust_alert_level_if_invalid_sensor(public_alert, entry):
 def get_all_invalid_triggers_of_site(site_code, invalids_list):
     invalid_site_triggers_list = []
     invalid_site_triggers_list = list(filter(lambda x: x["site_code"] == site_code, invalids_list))
+    h.var_checker("invalid_site_triggers_list", invalid_site_triggers_list, True)
 
-    return sorted(invalid_site_triggers_list, key=lambda x: x["alert"], reverse=True)
+    return sorted(invalid_site_triggers_list, key=lambda x: x["alert_symbol"][1], reverse=True)
 
 
 def process_with_alerts_entries(with_alerts, merged_list, invalids):
@@ -443,9 +444,14 @@ def process_candidate_alerts(generated_alerts, db_alerts):
     return candidate_alerts_list
 
 
-def main(internal_gen_data=None):
+def main(to_update_pub_alerts=False, internal_gen_data=None):
     start_time = dt.now()
     generated_alerts_dict = []
+
+    if to_update_pub_alerts:
+        print("FAK")
+        os.system("python /home/louie-cbews/CODES/cbews_iloilo/analysis_pycodes/analysis/publicalerts.py")
+
     if internal_gen_data:
         generated_alerts_dict = internal_gen_data
     else:
