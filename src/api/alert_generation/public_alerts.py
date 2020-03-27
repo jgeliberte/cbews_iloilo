@@ -51,27 +51,60 @@ def prepare_triggers(row):
 
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/UI/get_mar_alert_validation_data", methods=["GET"])
 def get_mar_alert_validation_data():
+    """API that returns data needed by web ui.
+    Also runs the alert generation scripts
     """
-    """
-    json_data = json.loads(candidate_alerts_generator.main(to_update_pub_alerts=True))
-    mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
-    new_rel_trigs = []
-    if mar_data:
-        release_triggers = mar_data["release_triggers"]
+    response = {
+        "data": None,
+        "status":   404,
+        "ok": False
+    }
+    try:
+        json_data = json.loads(candidate_alerts_generator.main(to_update_pub_alerts=True))
+        mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
+        new_rel_trigs = []
+        as_of_ts = h.dt_to_str(h.round_down_data_ts(dt.now()))
+        h.var_checker("mar_data", mar_data, True)
+        if mar_data:
+            release_triggers = mar_data["release_triggers"]
 
-        new_rel_trigs = list(map(prepare_triggers, release_triggers))
+            new_rel_trigs = list(map(prepare_triggers, release_triggers))
+        
+            data = {
+                "public_alert_level": mar_data["public_alert_level"],
+                "public_alert": mar_data["public_alert"],
+                "release_triggers": new_rel_trigs, 
+                "data_ts": mar_data["data_ts"],
+                "is_new_release": mar_data["is_new_release"],
+                "is_release_time": mar_data["is_release_time"],
+                "validity":  mar_data["validity"],
+                "candidate_data": mar_data,
+                "as_of_ts": as_of_ts,
+                "all_validated": True
+            }
+
+            h.var_checker("data er", data, True)
+
+            response = {
+                "data": data,
+                "status": 200,
+                "ok": True
+            }
+        else:
+            response = {
+                "data": {
+                    "as_of_ts": as_of_ts,
+                    "public_alert_level": 0
+                },
+                "status": 200,
+                "ok": True
+            }
+            
     
-    return jsonify({
-        "public_alert_level": mar_data["public_alert_level"],
-        "public_alert": mar_data["public_alert"],
-        "release_triggers": new_rel_trigs, 
-        "data_ts": mar_data["data_ts"],
-        "is_new_release": mar_data["is_new_release"],
-        "is_release_time": mar_data["is_release_time"],
-        "validity":  mar_data["validity"],
-        "candidate_data": mar_data,
-        "as_of_ts": h.dt_to_str(h.round_down_data_ts(dt.now()))
-    })
+    except Exception as err:
+        raise(err)
+
+    return jsonify(response)
 
 
 ######################

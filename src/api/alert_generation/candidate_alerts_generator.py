@@ -130,6 +130,21 @@ def get_retrigger_index(retriggers, trigger):
     return temp
 
 
+def adjust_alert_level_if_invalid_rain(entry):
+    retriggers = entry["triggers"]
+    internal_alert = entry["internal_alert"]
+
+    # Rain trigger is plain invalid
+    # internal_alert_level = internal_alert.replace(/R0*/g, "")
+    # invalid_index = getRetriggerIndex(retriggers, "r1")
+
+    obj = {
+        "internal_alert": "internal_alert_level",
+        "invalid_index": internal_alert
+    }
+    return obj
+
+
 def adjust_alert_level_if_invalid_sensor(public_alert, entry):
     internal_alert = entry["internal_alert"] 
     subsurface_alert = entry["subsurface"]
@@ -146,10 +161,7 @@ def adjust_alert_level_if_invalid_sensor(public_alert, entry):
         # internal_alert_level = internal_alert.replace(/S0*/g, "s").replace("A3", "A2");
         # TODO: Test this code
         internal_alert_level = re.sub(
-                    r"%s(0|x)?" % "S", "s", internal_alert)
-        internal_alert_level = re.sub(
-                    r"%s?" % "A3", "A2", internal_alert)
-        invalid_index = get_retrigger_index(retriggers, "L3")
+                    r"%s?" % ["s", "S"], "", internal_alert)
     else:
         public_alert_level = "A1"
         # TODO: Test this code
@@ -271,7 +283,7 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
                             if is_R_present:
                                 is_valid_but_needs_manual = True
                             else:
-                                return_dict = adjust_alert_level_if_invalid_sensor(entry)
+                                return_dict = adjust_alert_level_if_invalid_rain(entry)
 
                         if return_dict:
                             invalid_index = return_dict["invalid_index"]
