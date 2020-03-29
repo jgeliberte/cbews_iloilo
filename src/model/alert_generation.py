@@ -286,7 +286,6 @@ class AlertGeneration():
         """
         Returns public_alert_symbols row or value itself
         """
-        H = Helpers
         select_option = "*"
         if return_col:
             select_option = return_col
@@ -306,14 +305,85 @@ class AlertGeneration():
 
         return result
 
+    def get_ias_table():
+        """
+        Util miniquery
+        """
+        select_option = f"internal_sym_id, \
+                    ias.trigger_sym_id, \
+                    ias.alert_symbol as ias_symbol, \
+                    ots.alert_symbol as ots_symbol, \
+                    ots.alert_description, \
+                    alert_level, \
+                    trigger_source"
+        query = f"SELECT {select_option} FROM " + \
+                "senslopedb.internal_alert_symbols ias " + \
+            "INNER JOIN " + \
+                "operational_trigger_symbols ots USING (trigger_sym_id) " + \
+            "INNER JOIN " + \
+                "trigger_hierarchies th USING (source_id)"
+
+        schema = "senslopedb"
+        result = DB.db_read(query, schema)
+
+        h.var_checker("result",result,True)
+        result_list = []
+        for row in result:
+            result_list.append({
+                "trigger_sym_id": row[0],
+                "internal_sym_id": row[1],
+                "ias_symbol": row[2],
+                "ots_symbol": row[3],
+                "alert_description": row[4],
+                "alert_level": row[5],
+                "trigger_source": row[6]
+            })
+
+        return result_list
+
+
+    def get_ias_by_lvl_source(trigger_source, alert_level, return_col=None):
+        """
+        Util miniquery
+        """
+        select_option = f"internal_sym_id, \
+                    ias.trigger_sym_id, \
+                    ias.alert_symbol as ias_symbol, \
+                    ots.alert_symbol as ots_symbol, \
+                    ots.alert_description, \
+                    ots.alert_level, \
+                    trigger_source"
+        if return_col:
+            select_option = return_col
+        query = f"SELECT {select_option} FROM " + \
+                "senslopedb.internal_alert_symbols ias " + \
+            "INNER JOIN " + \
+                "operational_trigger_symbols ots USING (trigger_sym_id) " + \
+            "INNER JOIN " + \
+                "trigger_hierarchies th USING (source_id)"
+
+        query = f"{query} WHERE trigger_source = '{trigger_source}' "
+        query = f"{query} AND alert_level = {alert_level}"
+
+        h.var_checker("query", query, True)
+
+        schema = "senslopedb"
+        result = DB.db_read(query, schema)
+
+        if return_col:
+            result = result[0][0]
+
+        return result
+
+
     def get_internal_alert_symbol_row(trigger_type=None, trigger_symbol=None, return_col=None):
         """
         Util miniquery
         """
         select_option = f"internal_sym_id, \
                     ias.trigger_sym_id, \
-                    ias.alert_symbol as ots_symbol, \
-                    ots.alert_symbol as alert_symbol, \
+                    ias.alert_symbol as ias_symbol, \
+                    ots.alert_symbol as ots_symbol, \
                     ots.alert_description, \
                     ots.alert_level, \
                     trigger_source"

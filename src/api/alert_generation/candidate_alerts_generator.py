@@ -197,109 +197,240 @@ def get_all_invalid_triggers_of_site(site_code, invalids_list):
     invalid_site_triggers_list = list(filter(lambda x: x["site_code"] == site_code, invalids_list))
     h.var_checker("invalid_site_triggers_list", invalid_site_triggers_list, True)
 
-    return sorted(invalid_site_triggers_list, key=lambda x: x["alert_symbol"][1], reverse=True)
+    return sorted(invalid_site_triggers_list, key=lambda x: x["public_alert_symbol"][1], reverse=True)
+
+
+def getTriggerSource(source):
+    """
+    """
+    trig = None
+    # TODO static code. must be dynamic codes and trigger source
+    if source.upper() == "S":
+        trig = "subsurface"
+    elif source.upper() in ["R", "R0", "R1"]:
+        trig = "rainfall"
+    elif source.upper() in ["M", "M0"]:
+        trig = "moms"
+    elif source.upper() in ["L", "L0"]:
+        trig = "surficial"
+    
+    return trig
+
+
+def fix_internal_alert_invalids_0(entry, invalids):
+    """Old code
+    """
+    site_code = entry["site_code"]
+    site_invalids_list = get_all_invalid_triggers_of_site(site_code, invalids)
+
+    is_valid_but_needs_manual = False
+    for s_invalid in site_invalids_list:
+        h.var_checker("s_invalid", s_invalid, True)
+        # NOTE ARRAY INDEX is the position of site in the DB ALERTS
+        alert_index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == s_invalid["site_code"]), -1)
+        public_alert = s_invalid["public_alert_symbol"]
+
+        invalid_trigger = s_invalid["trigger_source"]
+        alerts_source_list = list(entry_source)
+        h.var_checker("alerts_source_list", alerts_source_list, True)
+
+        for source in alerts_source_list:
+            h.var_checker("source", source, True)
+            temp = getTriggerSource(source)
+            if temp == invalid_trigger:
+                entry["invalid_list"].append(s_invalid)
+
+                # Check if alert exists on database
+                if alert_index == -1 and len(alerts_source_list) == 1:
+                    entry["status"] = "invalid"
+                else:
+                    entry["status"] = "partial"
+                
+                trigger_letter = "Z"
+                if source == "subsurface":
+                    trigger_letter = "S"
+                elif source == "rainfall":
+                    trigger_letter = "R"
+
+                is_present_on_proposed_internal_alert = False
+                is_R_present = False
+                is_S_present = -1
+                if alert_index > -1:
+                    internal_alert_level = merged_list[alert_index]["internal_alert_level"]
+                    # temp = 
+                    up_t_letter = trigger_letter.upper()
+                    low_t_letter = trigger_letter.lower()
+                    is_present_on_proposed_internal_alert = up_t_letter in internal_alert or low_t_letter in internal_alert
+                    is_R_present = "R" in internal_alert
+                    is_S_present = "s" in internal_alert and "S" in internal_alert
+                
+                if alert_index == -1 or is_present_on_proposed_internal_alert:
+                    return_dict = None
+                    if source == "subsurface":
+                        if is_S_present:
+                            is_valid_but_needs_manual = True
+                        else:
+                            return_dict = adjust_alert_level_if_invalid_sensor(public_alert, entry)
+                    elif source == "rainfall":
+                        if is_R_present:
+                            is_valid_but_needs_manual = True
+                        else:
+                            return_dict = adjust_alert_level_if_invalid_rain(entry)
+
+                    if return_dict:
+                        invalid_index = return_dict["invalid_index"]
+                        entry = entry.update(entry)
+                        entry = entry.update(return_dict)
+                        entry["triggers"]["invalid_index"]["invalid"] = True
+
+    if len(entry["internal_alert"]) <= 3:
+        entry["status"] = "invalid"
+
+    if not is_valid_but_needs_manual:
+        return_dict = get_latest_trigger(entry)
+        entry.update(return_dict)
+    
+    return entry
+
+
+def tag_invalid_triggers(triggers_list, invalid_symbols_list):
+    h.var_checker("BEFORE invalid tagging triggers_list", triggers_list, True)
+    alert_lvl_list = []
+    for trig in triggers_list:
+        if trig["alert"] in invalid_symbols_list:
+            # IF Invalid
+            is_invalid = { "is_invalid": True }
+        else:
+            # IF Valid
+            alert_lvl_list.append(trig["alert_level"])
+            is_invalid = { "is_invalid": False }
+        trig.update(is_invalid)
+
+    h.var_checker("AFTER invalid tagging triggers_list", triggers_list, True)
+    candidate_alert_lvl = max(alert_lvl_list)
+    return triggers_list, candidate_alert_lvl
+
+
+def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
+    """
+    """
+    IAS_TABLE = AG.get_ias_table()
+
+    site_code = entry["site_code"]
+    site_invalid_trigs_list = get_all_invalid_triggers_of_site(site_code, invalid_triggers_list)
+    candidate_ia = entry["internal_alert"]
+    has_no_ground_data = entry["has_no_ground_data"]
+
+    site_db_alert = next(filter(lambda x: x["site_code"] == site_code, merged_list), None)
+    current_internal_alert = ""
+    current_public_alert_level = 0
+    current_entry_source = ""
+
+    # RETRIEVE THE ALERT CHARACTERS (the string after 'A#-') 
+    if site_db_alert:
+        current_public_alert_level = site_db_alert["public_alert_level"]
+        current_internal_alert = site_db_alert["internal_alert_level"]
+        if "-" in current_internal_alert:
+            current_entry_source = internal_alert.split("-", 1)[1]
+    candidate_entry_source = candidate_ia
+    if "-" in candidate_ia:
+        candidate_entry_source = candidate_ia.split("-", 1)[1]
+
+    # REMOVE INVALID internal_alert_symbol FROM INTERNAL_ALERTS 
+    entry["status"] = "valid"
+    invalid_list = []
+    invalid_symbols_list = []
+    for invalid_trigger in site_invalid_trigs_list:
+        trig_alert_level = invalid_trigger["alert_level"]
+        trigger_source = invalid_trigger["trigger_source"]
+        # try:
+        #     ias_symbol = invalid_trigger["ias_symbol"]
+        # except KeyError:
+        #     pass
+        #     ots_symbol = invalid_trigger["alert_symbol"]
+        #     ias_symbol = AG.get_internal_alert_symbol_row(trigger_symbol=ots_symbol, return_col="ias.alert_symbol")
+
+
+        # GET THE ND and Actual Internal Alert Symbol of the Invalid Trigger to be removed from 
+        # candidate internal alert
+        nd_ias_symbol = AG.get_ias_by_lvl_source(trigger_source, -1, "ias.alert_symbol")
+        h.var_checker("trig_alert_level", trig_alert_level, True)
+        ias_symbol = AG.get_ias_by_lvl_source(trigger_source, trig_alert_level, "ias.alert_symbol")
+        h.var_checker("ias_symbol", ias_symbol, True)
+        ias_checklist = [nd_ias_symbol, ias_symbol]
+        h.var_checker("ias_checklist", ias_checklist, True)
+
+        if ias_checklist:
+            for symbol in ias_checklist:
+                if symbol not in current_entry_source: # not yet released
+                    h.var_checker("candidate_entry_source", candidate_entry_source, True)
+                    if symbol in candidate_entry_source:
+                        print("FAKKEEER")
+                        invalid_list.append(invalid_trigger)
+                        invalid_symbols_list.append(symbol)
+                        entry["status"] = "has_invalid"
+                        candidate_entry_source = candidate_entry_source.replace(symbol, "")
+        else:
+            h.var_checker("ias_symbol", ias_symbol, True)
+            raise("ERROR IN GETTING IAS_SYMBOL FOR INVALIDS")
+
+    # MARK INVALID TRIGGERS 
+    tagged_triggers, candidate_alert_level = tag_invalid_triggers(entry["triggers"], invalid_symbols_list)
+    entry["triggers"] = tagged_triggers
+    entry["invalid_list"] = invalid_list
+
+    # FINALIZE ALERT LEVEL 
+    if current_public_alert_level > candidate_alert_level:
+        candidate_alert_level = current_public_alert_level
+    
+    public_alert = f"A{candidate_alert_level}"
+    if candidate_alert_level > 0:
+        internal_alert = public_alert
+        if len(entry["triggers"]) == 1 and candidate_alert_level == 1:
+            trigger_source = AG.get_trigger_hierarchy(entry["triggers"][0]["source_id"], "trigger_source")
+            if trigger_source == "rainfall" and has_no_ground_data:
+                if candidate_entry_source:
+                    public_alert = "ND"
+                else:
+                    public_alert = "A0"
+                    internal_alert = public_alert
+        if candidate_entry_source:
+            internal_alert = f"{public_alert}-{candidate_entry_source}"
+    else:
+        internal_alert = "A0"
+
+    h.var_checker("public_alert", public_alert, True)
+    h.var_checker("internal_alert", internal_alert, True)
+    entry.update({
+        "public_alert": public_alert,
+        "public_alert_level": candidate_alert_level,
+        "internal_alert": internal_alert
+    })
+
+    return entry
 
 
 def process_with_alerts_entries(with_alerts, merged_list, invalids):
+    """Remove invalid triggers and adjust the internal alert and alert level 
+    based on the inputs
+
+    Args:
+        with_alerts (list) - contains the site alerts dictionaries that has alert
+                                level higher than 0
+        merged_list (list) - this is simply the alerts already written/released
+                                on database
+        invalids (list) - this is the list of invalid triggers from publicalerts.py
+    """
     candidates_list = []
 
     for w_alert in with_alerts:
         entry = w_alert
         site_code = entry["site_code"]
-        internal_alert = entry["internal_alert"] 
 
-        # TODO REVISIT CODE
-        entry_source = internal_alert
-        if "-" in internal_alert:
-            entry_source = internal_alert.split("-", 1)
-
-        entry["status"] = "valid"
-        entry["invalid_list"] = []
-
-        site_invalids_list = get_all_invalid_triggers_of_site(site_code, invalids)
-
-        is_valid_but_needs_manual = False
-        for s_invalid in site_invalids_list:
-            # TODO Manumanong code. Needs to be refactored.
-            # alert_index = -1
-            # for index, value in enumerate(merged_list):
-            #     if value["site_code"] == s_invalid["site_code"]:
-            #         alert_index = index
-            #         break
-            # End of experimental code
-            alert_index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == s_invalid["site_code"]), -1)
-            public_alert = s_invalid["alert"]
-
-            invalid_trigger = s_invalid["trigger_source"]
-            alerts_source_list = list(entry_source)
-
-            # TODO Can use lambda para mas maikli
-            temp = []
-            for source in alerts_source_list:
-                trig = None
-                # TODO static code. must be dynamic codes and trigger source
-                if source.upper() == "S":
-                    trig = "subsurface"
-                elif source.upper() == "R":
-                    trig = "rainfall"
-                temp.append(trig)
-
-            for source in alerts_source_list:
-                if source == invalid_trigger:
-                    entry["invalid_list"].append(s_invalid)
-
-                    # Check if alert exists on database
-                    if alert_index == -1 and len(alerts_source_list) == 1:
-                        entry["status"] = "invalid"
-                    else:
-                        entry["status"] = "partial"
-                    
-                    trigger_letter = "Z"
-                    if source == "subsurface":
-                        trigger_letter = "S"
-                    elif source == "rainfall":
-                        trigger_letter = "R"
-
-                    is_present_on_proposed_internal_alert = False
-                    is_R_present = False
-                    is_S_present = -1
-                    if alert_index > -1:
-                        internal_alert_level = merged_list[alert_index]["internal_alert_level"]
-                        # temp = 
-                        up_t_letter = trigger_letter.upper()
-                        low_t_letter = trigger_letter.lower()
-                        is_present_on_proposed_internal_alert = up_t_letter in internal_alert or low_t_letter in internal_alert
-                        is_R_present = "R" in internal_alert
-                        is_S_present = "s" in internal_alert and "S" in internal_alert
-                    
-                    if alert_index == -1 or is_present_on_proposed_internal_alert:
-                        return_dict = None
-                        if source == "subsurface":
-                            if is_S_present:
-                                is_valid_but_needs_manual = True
-                            else:
-                                return_dict = adjust_alert_level_if_invalid_sensor(public_alert, entry)
-                        elif source == "rainfall":
-                            if is_R_present:
-                                is_valid_but_needs_manual = True
-                            else:
-                                return_dict = adjust_alert_level_if_invalid_rain(entry)
-
-                        if return_dict:
-                            invalid_index = return_dict["invalid_index"]
-                            entry = entry.update(entry)
-                            entry = entry.update(return_dict)
-                            entry["triggers"]["invalid_index"]["invalid"] = True
-
-        if len(entry["internal_alert"]) <= 3:
-            entry["status"] = "invalid"
-
-        if not is_valid_but_needs_manual:
-            return_dict = get_latest_trigger(entry)
-            entry.update(return_dict)
+        entry = fix_internal_alert_invalids(entry, invalids, merged_list)
 
         for_updating = True
-        index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == entry["site_code"]), -1)
+        index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == site_code), -1)
 
         if index != -1:
             merged_list[index]["for_release"] = True
@@ -385,7 +516,8 @@ def prepare_candidate_for_release(candidate, merged_list=None):
             "alert_level": trigger["alert_level"],
             "trigger_id": trigger["trigger_id"],
             "ots_symbol": ots_symbol,
-            "trigger_source": trigger_source
+            "trigger_source": trigger_source,
+            "is_invalid": trigger["is_invalid"]
         }
 
         new_trigger_list.append(trigger_payload)
@@ -396,6 +528,17 @@ def prepare_candidate_for_release(candidate, merged_list=None):
     # rel_trigs = identify_release_triggers(raw_triggers, tech_info)
     
     release_related_attributes = {
+        "ts": candidate["ts"],
+        "site_id": candidate["site_id"],
+        "site_code": candidate["site_code"],
+        "public_alert": candidate["public_alert"],
+        "internal_alert": candidate["internal_alert"],
+        "validity": candidate["validity"],
+        "subsurface": candidate["subsurface"],
+        "surficial": candidate["surficial"],
+        "rainfall": candidate["rainfall"],
+        "moms": candidate["moms"],
+        "status": candidate["status"],
         "release_time": h.dt_to_str(dt.now()),
         "data_ts": candidate["ts"],
         "release_triggers": new_trigger_list,
@@ -405,8 +548,9 @@ def prepare_candidate_for_release(candidate, merged_list=None):
         "is_release_time": is_release_time, 
         "is_new_release": is_new_release
     }
-    candidate.update(release_related_attributes)
-    return candidate
+    # candidate.update(release_related_attributes)
+    # return candidate
+    return release_related_attributes
 
 
 def separate_with_alerts_to_no_alerts_on_JSON(alerts_list):

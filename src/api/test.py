@@ -94,3 +94,16 @@ def test_update_public_alert_event():
     return jsonify(result)
 
 
+@TEST_BLUEPRINT.route("/get_ias_table", methods=["GET"])
+def test_get_ias_table():
+    """
+    """
+    ag = AlertGeneration
+    now_ts_str = h.dt_to_str(dt.now())
+    
+    result = ag.get_ias_table()
+    h.var_checker("result", result, True)
+
+    return jsonify(result)
+
+
