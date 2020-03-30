@@ -61,4 +61,7 @@ def create_app():
     from src.api.data_analysis.subsurface_analysis import SUBSURFACE_ANALYSIS_BLUEPRINT
     app.register_blueprint(SUBSURFACE_ANALYSIS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.test import TEST_BLUEPRINT
+    app.register_blueprint(TEST_BLUEPRINT, url_prefix="/test")
+
     return app

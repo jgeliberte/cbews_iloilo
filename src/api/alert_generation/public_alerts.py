@@ -6,9 +6,173 @@ from src.model.alert_generation import AlertGeneration
 from src.model.public_alert_table import PublicAlertTable as PAT
 from src.model.users import Users
 from src.api.helpers import Helpers as h
+from src.api.alert_generation import candidate_alerts_generator
 
 
 PUBLIC_ALERTS_BLUEPRINT = Blueprint("public_alerts_blueprint", __name__)
+
+
+########################
+# START OF MAR UI APIs #
+########################
+
+def get_haphazard_rain_data_source(tech_info):
+    start = 0
+    end = tech_info.find(":") - 1
+    rain_data_source = tech_info[start:end]
+    return rain_data_source
+
+def get_haphazard_moms_data_source(tech_info):
+    start = tech_info.find(":") + 2
+    end = tech_info.find("found") - 1
+    moms_data_source = tech_info[start:end]
+    return moms_data_source
+
+def prepare_triggers(row):
+    trigger_source = row["trigger_source"]
+    info = ""
+    if trigger_source == "moms":
+        try:
+            info = row["info"]["m3"]
+        except KeyError:
+            info = row["info"]["m2"]
+        data_source = get_haphazard_moms_data_source(info)
+    elif trigger_source == "rainfall":
+        info = row["info"]
+        data_source = get_haphazard_rain_data_source(row["info"])
+
+    return {
+        "date_time": row["timestamp"],
+        "trigger": trigger_source.capitalize(),
+        "data_source": data_source,
+        "description": info,
+        "trigger_id": row["trigger_id"]
+    }
+
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/UI/get_mar_alert_validation_data", methods=["GET"])
+def get_mar_alert_validation_data():
+    """API that returns data needed by web ui.
+    Also runs the alert generation scripts
+    """
+    response = {
+        "data": None,
+        "status":   404,
+        "ok": False
+    }
+    try:
+        json_data = json.loads(candidate_alerts_generator.main(to_update_pub_alerts=True))
+        mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
+        new_rel_trigs = []
+        as_of_ts = h.dt_to_str(h.round_down_data_ts(dt.now()))
+        h.var_checker("mar_data", mar_data, True)
+        if mar_data:
+            release_triggers = mar_data["release_triggers"]
+
+            new_rel_trigs = list(map(prepare_triggers, release_triggers))
+        
+            data = {
+                "public_alert_level": mar_data["public_alert_level"],
+                "public_alert": mar_data["public_alert"],
+                "release_triggers": new_rel_trigs, 
+                "data_ts": mar_data["data_ts"],
+                "is_new_release": mar_data["is_new_release"],
+                "is_release_time": mar_data["is_release_time"],
+                "validity":  mar_data["validity"],
+                "candidate_data": mar_data,
+                "as_of_ts": as_of_ts,
+                "all_validated": True
+            }
+
+            h.var_checker("data er", data, True)
+
+            response = {
+                "data": data,
+                "status": 200,
+                "ok": True
+            }
+        else:
+            response = {
+                "data": {
+                    "as_of_ts": as_of_ts,
+                    "public_alert_level": 0
+                },
+                "status": 200,
+                "ok": True
+            }
+            
+    
+    except Exception as err:
+        raise(err)
+
+    return jsonify(response)
+
+
+######################
+# END OF MAR UI APIs #
+######################
+
+
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/validate_trigger", methods=["POST"])
+def validate_trigger():
+    """
+    """
+    print("FAK")
+    try:
+        AG = AlertGeneration
+        json_input = request.get_json()
+        h.var_checker("json_input", json_input, True)
+        trigger_id = json_input["trigger_id"]
+        alert_status = json_input["alert_status"]
+        remarks = json_input["remarks"]
+        user_id = json_input["user_id"]
+
+        # FIND IF alert_status row exists for trigger id
+        alert_status_row = AG.fetch_alert_status(AG, trigger_id)
+        now_ts_str = h.dt_to_str(dt.now())
+
+        if alert_status_row:
+            # If exists, update
+            result = AG.update_alert_status(AG,
+                update_dict={
+                    "alert_status": alert_status,
+                    "remarks": remarks,
+                    "ts_set": now_ts_str,
+                    "ts_ack": now_ts_str,
+                    "user_id": user_id
+                },
+                where_dict={
+                    "trigger_id": trigger_id
+                }
+            )
+        else:
+            # If not, insert
+            alert_id = AG.insert_alert_status(
+                self=AG,
+                trigger_id=trigger_id,
+                ts_last_retrigger=json_input["ts_last_retrigger"],
+                ts_set=now_ts_str,
+                ts_ack=now_ts_str,
+                alert_status=alert_status,
+                remarks=remarks,
+                user_id=user_id
+            )
+            result = alert_id
+        
+        response = {
+            "data": result,
+            "ok": True,
+            "status": 200
+        }
+    except Exception as err:
+        raise(err)
+        response = {
+            "data": None,
+            "ok": False,
+            "status": 404
+        }
+
+    h.var_checker("response", response, True)
+    return jsonify(response)
 
 
 def get_trigger_type_details(trigger_type):
@@ -230,7 +394,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 # insert_ewi util functions #
 #############################
 
-def save_triggers(json_data, event_id, release_id, current_validity):
+def save_triggers(ewi_data, event_id, release_id, current_validity):
     """
     """
     print()
@@ -254,104 +418,114 @@ def adjust_bulletin_number(site_id):
     return return_data
 
 
-@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["POST"])
-def insert_ewi():
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/insert_ewi", methods=["GET", "POST"])
+def insert_ewi(internal_ewi_data=None):
     """
     """
-    json_data = request.get_json()
     h.var_checker("insert_ewi json_data", json_data, True)
 
     try:
-        site_id = json_data["site_id"]
-    except KeyError:
-        site_code = json_data["site_code"]
-        # TODO
-        site_id = 50
+        release_id = None
+        validity = None
+        update_event_container = {}
+        # For routine sites
+        release_list = []
 
-    data_ts = json_data["data_ts"]
-    release_time = json_data["release_time"]
-    comments = json_data["comments"]
-    reporter_id_mt = json["reporter_id_mt"]
-    reporter_id_ct = json["reporter_id_ct"]
-
-    release_id = None
-    validity = None
-    update_event_container = {}
-    # For routine sites
-    release_list = []
-
-    release_dict = {
-        "data_ts": data_ts, 
-        "release_time": release_time,
-        "comments": comments,
-        "reporter_id_mt": reporter_id_mt,
-        "reporter_id_ct": reporter_id_ct
-    }
-
-    status = json_data["status"]
-    if status == "routine":
-        for routine_entry in json_data["routine_list"]:
-            event_id = PAT.insert_public_alert_event(
-                site_id=site_id, event_start=data_ts, latest_rel_id=None,
-                latest_trig_id=None, validity=validity, status=status
-            )
-            H.var_checker("event_id", event_id, True)
-
-            release_dict["event_id"] = event_id
-            release_dict["internal_alert_level"] = routine_entry["internal_alert"]
-            release_dict["bulletin_number"] = adjust_bulletin_number(site_id=site_id)
-
-            release_list.append(release_dict)
-    
-    else:
-        release_dict["internal_alert_level"] = json_data["internal_alert_level"]
-        release_dict["bulletin_number"] = json_data["bulletin_number"]
-
-        if status == "new":
-            event_id = PAT.insert_public_alert_event(
-                site_id=site_id, event_start=data_ts, latest_rel_id=None,
-                latest_trig_id=None, validity=validity, status=status
-            )
-            release_dict["event_id"] = event_id
-            try:
-                previous_event_id = json_data["previous_event_id"]
-                if previous_event_id:
-                    PAT.update_public_alert_event({
-                        "status": "finished"
-                    }, {
-                        "event_id": previous_event_id
-                    })
-            except KeyError:
-                pass
-                
+        if internal_ewi_data:
+            ewi_data = internal_ewi_data
         else:
-            event_id = json_data["current_event_id"]
-            release_dict["event_id"] = event_id
+            ewi_data = request.get_json()
 
-            validity = AlertGeneration.get_public_alert_event_validity(event_id)
+        # Extract main necessary data
+        site_id = ewi_data["site_id"]
+        site_code = ewi_data["site_code"]
+        data_ts = ewi_data["data_ts"]
 
-            if status in ["extended", "invalid", "finished"]:
-                update_event_container["status"] = status
-        
-        release_list.append(release_dict)
-    
-    for release_dict in release_list:
-        release_id = PAT.insert_public_alert_release(
-            event_id=release_dict["event_id"],
-            data_ts=release_dict["data_ts"],
-            internal_alert=release_dict["internal_alert_level"],
-            release_time=release_dict["release_time"],
-            comments=release_dict["comments"],
-            bulletin_number=release_dict["bulletin_number"],
-            reporter_id_mt=release_dict["reporter_id_mt"],
-            reporter_id_ct=release_dict["reporter_id_ct"]
-        )
+        # TODO: Find a way to get the two ff data
+        reporter_id_mt = 1
+        reporter_id_ct = 2
+        release_dict = {
+            "data_ts": data_ts, 
+            "release_time": ewi_data["release_time"],
+            "comments": ewi_data["comments"],
+            "reporter_id_mt": reporter_id_mt,
+            "reporter_id_ct": reporter_id_ct
+        }
 
+        status = ewi_data["status"]
         if status == "routine":
-            event_id = release_dict["event_id"]
-        elif status in ["new", "on-going"]:
-            if "extend_ND" in json_data or "extend_rain_x" in json_data:
-                update_event_container["validity"] = h.str_to_dt(validity) + timedelta(hours=4)
+            for routine_entry in ewi_data["routine_list"]:
+                event_id = PAT.insert_public_alert_event(
+                    site_id=site_id, event_start=data_ts, latest_rel_id=None,
+                    latest_trig_id=None, validity=validity, status=status
+                )
+                H.var_checker("event_id", event_id, True)
+
+                release_dict["event_id"] = event_id
+                release_dict["internal_alert_level"] = routine_entry["internal_alert"]
+                release_dict["bulletin_number"] = adjust_bulletin_number(site_id=site_id)
+
+                release_list.append(release_dict)
+        
+        else:
+            release_dict["internal_alert_level"] = ewi_data["internal_alert_level"]
+            release_dict["bulletin_number"] = ewi_data["bulletin_number"]
+
+            if status == "new":
+                event_id = PAT.insert_public_alert_event(
+                    site_id=site_id, event_start=data_ts, latest_rel_id=None,
+                    latest_trig_id=None, validity=validity, status=status
+                )
+                release_dict["event_id"] = event_id
+                try:
+                    previous_event_id = ewi_data["previous_event_id"]
+                    if previous_event_id:
+                        PAT.update_public_alert_event({
+                            "status": "finished"
+                        }, {
+                            "event_id": previous_event_id
+                        })
+                except KeyError:
+                    pass
+                    
             else:
-                return_list = save_triggers(json_data, event_id, release_id, validity)
-                update_event_container = update_event_container
+                event_id = ewi_data["current_event_id"]
+                release_dict["event_id"] = event_id
+
+                validity = AlertGeneration.get_public_alert_event_validity(event_id)
+
+                if status in ["extended", "invalid", "finished"]:
+                    update_event_container["status"] = status
+            
+            release_list.append(release_dict)
+        
+        for release_dict in release_list:
+            release_id = PAT.insert_public_alert_release(
+                event_id=release_dict["event_id"],
+                data_ts=release_dict["data_ts"],
+                internal_alert=release_dict["internal_alert_level"],
+                release_time=release_dict["release_time"],
+                comments=release_dict["comments"],
+                bulletin_number=release_dict["bulletin_number"],
+                reporter_id_mt=release_dict["reporter_id_mt"],
+                reporter_id_ct=release_dict["reporter_id_ct"]
+            )
+
+            if status == "routine":
+                event_id = release_dict["event_id"]
+            elif status in ["new", "on-going"]:
+                if "extend_ND" in ewi_data or "extend_rain_x" in ewi_data:
+                    update_event_container["validity"] = h.str_to_dt(validity) + timedelta(hours=4)
+                else:
+                    return_list = save_triggers(ewi_data, event_id, release_id, validity)
+                    update_event_container = update_event_container
+
+
+    except Exception as err:
+        print(err)
+        
+        return {
+            "status": 200,
+            "data": None,
+            "ok": False
+        }

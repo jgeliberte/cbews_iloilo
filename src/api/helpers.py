@@ -4,6 +4,27 @@ import time as time_t
 from datetime import datetime, timedelta, time
 
 class Helpers():
+
+    def round_down_data_ts(date_time):
+        """
+        Rounds time to HH:00 or HH:30.
+
+        Args:
+            date_time (datetime): Timestamp to be rounded off. Rounds to HH:00
+            if before HH:30, else rounds to HH:30.
+
+        Returns:
+            datetime: Timestamp with time rounded off to HH:00 or HH:30.
+
+        """
+
+        hour = date_time.hour
+        minute = date_time.minute
+        minute = 0 if minute < 30 else 30
+        date_time = datetime.combine(date_time.date(), time(hour, minute))
+        return date_time
+
+
     def round_to_nearest_release_time(data_ts, interval=4):
         """
         Round time to nearest 4/8/12 AM/PM (default)
