@@ -5,6 +5,7 @@ from datetime import datetime as dt, timedelta
 from src.model.alert_generation import AlertGeneration
 from src.model.public_alert_table import PublicAlertTable as PAT
 from src.model.users import Users
+from src.model.maintenance import Maintenance as m
 from src.api.helpers import Helpers as h
 from src.api.alert_generation import candidate_alerts_generator
 
@@ -105,5 +106,65 @@ def test_get_ias_table():
     h.var_checker("result", result, True)
 
     return jsonify(result)
+
+
+@TEST_BLUEPRINT.route("/create_maintenance_log", methods=["GET"])
+def test_create_maintenance_log():
+    """
+    """
+    
+    result = m.create_maintenance_log(m, data={
+        "maintenance_ts": "2020-03-29 03:00:00",
+        "maintenance_type": "sensor",
+        "remarks": "Test remarks",
+        "in_charge": "Mayor",
+        "updater": "Kap",
+        "site_id": 29,
+    })
+    h.var_checker("result", result, True)
+
+    return jsonify(result)
+
+
+@TEST_BLUEPRINT.route("/fetch_maintenance_log", methods=["GET"])
+def test_fetch_maintenance_log():
+    """
+    """
+    
+    result = m.fetch_maintenance_log(m, site_id=29, maintenance_log_id=1)
+    h.var_checker("result", result, True)
+
+    return jsonify(result)
+
+
+@TEST_BLUEPRINT.route("/update_maintenance_log", methods=["GET"])
+def test_update_maintenance_log():
+    """
+    """
+    
+    result = m.update_maintenance_log(m, data={
+        "maintenance_log_id": 1,
+        "maintenance_ts": "2020-03-29 03:30:00",
+        "maintenance_type": "hardware",
+        "remarks": "Test remarks edited",
+        "in_charge": "Secretary ni Mayor",
+        "updater": "Kap's wife",
+        "site_id": 29,
+    })
+    h.var_checker("result", result, True)
+
+    return jsonify(result)
+
+
+@TEST_BLUEPRINT.route("/delete_maintenance_log", methods=["GET"])
+def test_delete_maintenance_log():
+    """
+    """
+    
+    result = m.delete_maintenance_log(m, maintenance_log_id=1, site_id=29)
+    h.var_checker("result", result, True)
+
+    return jsonify(result)
+
 
 
