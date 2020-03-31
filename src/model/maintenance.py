@@ -33,14 +33,17 @@ class Maintenance():
         schema = DB.db_switcher(site_id)
         result = DB.db_read(query, schema)
         if result:
-            row = result[0]
-            result = {
-                "maintenance_log_id": row[0],
-                "maintenance_ts": row[1],
-                "maintenance_type": row[2],
-                "remarks": row[3],
-                "in_charge": row[4]
-            }
+            temp = []
+            for row in result:
+                temp.append({
+                    "maintenance_log_id": row[0],
+                    "maintenance_ts": h.dt_to_str(row[1]),
+                    "maintenance_type": row[2],
+                    "remarks": row[3],
+                    "in_charge": row[4],
+                    "updater": row[5]
+                })
+            result = temp
         return result
     
     def update_maintenance_log(self, data):

@@ -1,10 +1,13 @@
 from flask import Blueprint, jsonify, request
+from flask_cors import CORS, cross_origin
 from connections import SOCKETIO
 from src.model.maintenance import Maintenance as m
+from src.api.helpers import Helpers as h
 
 MAINTENANCE_LOGS_BLUEPRINT = Blueprint("maintenance_logs_blueprint", __name__)
 
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/add", methods=["POST"])
+@cross_origin()
 def add():
     data = request.get_json()
     status = m.create_maintenance_log(m, data)
@@ -22,21 +25,34 @@ def add():
         }
     return jsonify(return_value)
 
-
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch", methods=["POST"])
-@MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch/<site_id>/<cav_id>", methods=["GET"])
+@MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch/<site_id>/<maintenance_log_id>", methods=["GET"])
+@cross_origin()
 def fetch(site_id=None, maintenance_log_id=None):
     """Returns maintenance log in two forms of filter. One is via get request
     """
-    json_data = request.get_json()
-    ts_dict = None
-    if json_data:
-        ts_dict = json_data["ts_dict"]
-        site_id = json_data["site_id"]
-    result = m.fetch_maintenance_log(m,
-                site_id=site_id, maintenance_log_id=maintenance_log_id, ts_dict=ts_dict)
+    try:
+        json_data = request.get_json()
+        ts_dict = None
+        if json_data:
+            ts_dict = json_data["ts_dict"]
+            site_id = json_data["site_id"]
 
-    return jsonify(result)
+        result = m.fetch_maintenance_log(m,
+                    site_id=site_id, maintenance_log_id=maintenance_log_id, ts_dict=ts_dict)
+        response = {
+            "ok": True,
+            "data": result
+        }
+    
+    except Exception as err:
+        print(err)
+        response = {
+            "ok": False,
+            "data": []
+        }
+
+    return jsonify(response)
 
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/update", methods=["POST"])
 def modify():
