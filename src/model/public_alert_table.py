@@ -17,14 +17,19 @@ class PublicAlertTable():
 
         return event_id
 
-
     def update_public_alert_event(self, update_dict, where_dict):
         """
         """
         query = "UPDATE public_alert_event "
         query += "SET "
-        for item in update_dict.items():
-            query += f"{item[0]} = {item[1]} "
+        length = len(update_dict.items())
+        for index, item in enumerate(update_dict.items()):
+            value = item[1]
+            if isinstance(item[1], str):
+                value = f"'{item[1]}'"
+            query += f"{item[0]} = {value}"
+            if index + 1 < length:
+                query += ", "
 
         index = 0
         for item in where_dict.items():

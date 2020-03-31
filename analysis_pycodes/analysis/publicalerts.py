@@ -127,9 +127,7 @@ def get_site_moms_alerts(site_id, start, end):
 
     moms_op_trigger = 0
     if not sorted_df.empty:
-        # var_checker("sorted_df", sorted_df.iloc[0], True)
         moms_op_trigger = sorted_df.iloc[0]["op_trigger"]
-        # var_checker("moms_op_trigger", moms_op_trigger, True)
     else:
         moms_op_trigger = -1
 
@@ -391,12 +389,10 @@ def get_internal_alert(pos_trig, release_op_trig, internal_symbols):
     # REPLACE NO DATA TRIGGERS
     if len(no_data) != 0:
         no_data_grp = no_data.groupby('source_id', as_index=False)
-        # var_checker("INTERNAL DF BEFORE ND", internal_df, True)
         internal_df = no_data_grp.apply(nd_internal_alert,
                                         internal_df=internal_df,
                                         internal_symbols=internal_symbols)
     
-    # var_checker("INTERNAL DF AFTER ND", internal_df, True)
     # NOTE: LOUIE CHANGES FILTERS ON NO DATA. PACHECK KAY MERYLL
     internal_df = internal_df.drop_duplicates(subset = 'source_id', keep = 'last')
     internal_df = internal_df.reset_index(drop=True)
@@ -490,7 +486,6 @@ def replace_rainfall_alert_if_rx(internal_df, internal_symbols, site_id,
     return internal_df, is_x
 
 def query_current_events(end):
-    
     query = "SELECT PA.ts, PA.ts_updated, PA.site_id, PAS.alert_symbol FROM public_alerts as PA "
     query += "  JOIN public_alert_symbols as PAS "
     query += "    ON PA.pub_sym_id = PAS.pub_sym_id "
@@ -508,7 +503,7 @@ def get_alert_history(current_events):
     public_alert_symbols = current_events['alert_symbol'].values[0]
     
     query = "SELECT CONCAT(cdb.firstname, ' ', cdb.lastname) as iomp, " 
-    query += "sites.site_code, OTS.alert_symbol, ALS.ts_last_retrigger, " 
+    query += "sites.site_code, OTS.alert_symbol, ALS.ts_last_retrigger, OTS.alert_level, " 
     query += "ALS.remarks, TH.trigger_source, ALS.alert_status, PAS.alert_symbol as public_alert_symbol "
     query += "FROM alert_status as ALS "
     query += "  JOIN operational_triggers as OT "
@@ -558,7 +553,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     site_code = site_props['site_code'].values[0]
     site_id = site_props['site_id'].values[0]
     # LOUIE
-    print({f"Site Code: {site_code.upper()}"})
+    print(f"Site Code: {site_code.upper()}")
 
     # Creates a public_alerts table if it doesn't exist yet
     if qdb.does_table_exist('public_alerts') == False:
@@ -598,7 +593,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # public alert based on highest alert level in operational triggers
     public_alert = max(list(pos_trig['alert_level'].values) + [0])
-    print()
     print('Public Alert %s' %public_alert)   
     print()
 
@@ -760,7 +754,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     # most recent retrigger of positive operational triggers
     try:
         #last positive retriggger/s
-        var_checker("last_pos_trig", last_pos_trig, True)
         triggers = last_pos_trig[['trigger_id', 'alert_symbol', 'ts_updated', 'trigger_sym_id', 'source_id', 'alert_level']]
         triggers = triggers.rename(columns = {'alert_symbol': 'alert', \
                 'ts_updated': 'ts'})
@@ -797,7 +790,8 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
                     'internal_alert': [internal_alert], 'validity': [validity],
                     'subsurface': [subsurface], 'surficial': [surficial],
                     'rainfall': [rainfall], 'moms': [moms_alert],
-                    'triggers': [triggers], 'tech_info': [tech_info]})
+                    'triggers': [triggers], 'tech_info': [tech_info],
+                    'has_no_ground_data': [has_no_ground_data]})
 
     # writes public alert to database
     pub_sym_id =  public_symbols[public_symbols.alert_level == \
@@ -815,7 +809,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
         do_not_write_to_db
     except:
         print("")
-        # qdb.alert_to_db(site_public_df, 'public_alerts')
+        qdb.alert_to_db(site_public_df, 'public_alerts')
     
     return public_df
 
@@ -882,11 +876,6 @@ def main(end=datetime.now()):
                               start_time=start_time).reset_index(drop=True)
 
     alerts = alerts.sort_values(['public_alert', 'site_code'], ascending=[False, True])
-    try:
-        var_checker("alerts", alerts.iloc[0]["triggers"], True)
-        # var_checker("alerts", alerts.loc(alerts["triggers"]), True)
-    except Exception as err:
-        print(err)
 
     # map alert level to alert symbol
     alerts['public_alert'] = alerts['public_alert'].map(pub_map)
@@ -900,7 +889,7 @@ def main(end=datetime.now()):
     current_events = query_current_events(end)
     current_alerts = current_events.apply(get_alert_history)
 
-    columns = ['iomp', 'site_code', 'alert_symbol', 'ts_last_retrigger', 'remarks', 'trigger_source', 'alert_status', 'public_alert_symbol']
+    columns = ['iomp', 'site_code', 'alert_symbol', 'ts_last_retrigger', 'alert_level', 'remarks', 'trigger_source', 'alert_status', 'public_alert_symbol']
     invalid_alerts = pd.DataFrame(columns=columns)
     
     try:
@@ -917,7 +906,8 @@ def main(end=datetime.now()):
         invalid_alerts = invalid_alerts.drop_duplicates(['alert_symbol', 'site_code'])
         invalid_alerts['ts_last_retrigger'] = invalid_alerts['ts_last_retrigger'].apply(lambda x: str(x))
 
-    except:
+    except Exception as err:
+        raise(err)
         invalid_alerts = pd.DataFrame()
     
     all_alerts = pd.DataFrame({'invalids': [invalid_alerts], 'alerts': [alerts]})
