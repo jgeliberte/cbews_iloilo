@@ -64,6 +64,9 @@ def create_app():
     from src.api.maintenance.maintenance_logs import MAINTENANCE_LOGS_BLUEPRINT
     app.register_blueprint(MAINTENANCE_LOGS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.sensor_data.earthquake import EARTHQUAKE_BLUEPRINT
+    app.register_blueprint(EARTHQUAKE_BLUEPRINT, url_prefix="/api")
+    
     from src.api.test import TEST_BLUEPRINT
     app.register_blueprint(TEST_BLUEPRINT, url_prefix="/test")
 

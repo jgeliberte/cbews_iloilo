@@ -13,13 +13,13 @@ def add():
     status = m.create_maintenance_log(m, data)
     if status is not None:
         return_value = {
-            "status": True,
+            "ok": True,
             "maintenance_log_id": status,
             "message": "New maintenance log data successfully added!"
         }
     else:
         return_value = {
-            "status": False,
+            "ok": False,
             "maintenance_log_id": None,
             "message": "Failed to add maintenance log data. Please check your network connection."
         }
@@ -55,6 +55,7 @@ def fetch(site_id=None, maintenance_log_id=None):
     return jsonify(response)
 
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/update", methods=["POST"])
+@cross_origin()
 def modify():
     data = request.get_json()
     result = m.update_maintenance_log(m, data={
@@ -68,27 +69,28 @@ def modify():
     })
     if result is not None:
         return_value = {
-            "status": True,
+            "ok": True,
             "message": "Maintenance logs data successfully updated!"
         }
     else:
         return_value = {
-            "status": False,
+            "ok": False,
             "message": "Failed to update maintenance logs data. Please check your network connection."
         }
     return jsonify(return_value)
 
-@MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/remove/<site_id>/<maintenance_log_id>", methods=["DELETE"])
+@MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/remove/<site_id>/<maintenance_log_id>", methods=["GET"])
+@cross_origin()
 def remove(site_id, maintenance_log_id):
     status = m.delete_maintenance_log(m, maintenance_log_id, site_id)
     if status is not None:
         return_value = {
-            "status": True,
+            "ok": True,
             "message": "Maintenance log data successfully deleted!"
         }
     else:
         return_value = {
-            "status": False,
+            "ok": False,
             "message": "Failed to delete maintenance log data. Please check your network connection."
         }
     return jsonify(return_value)
