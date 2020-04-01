@@ -12,15 +12,16 @@ class TemplateCreator():
 		return ewi_data
 
 	def add(ewi_data):
-		(ewi_id, tag, template, ts_modified, modification_by) = ewi_data.values()
-		query =  "INSERT INTO ewi_template VALUES (0, '{tag}', '{template}', '{ts_modified}', '{modification_by}');"
+		(ewi_id, tag, template, modification_by) = ewi_data.values()
+		ts_modified = dt.today()
+		query =  f"INSERT INTO ewi_template VALUES (0, '{tag}', '{template}', '{ts_modified}', '{modification_by}');"
 		ewi_data = DB.db_modify(query, 'ewi_db', True)
 		return ewi_data
 
 	def update(ewi_data):
 		(ewi_id, tag, template, modification_by) = ewi_data.values()
 		ts_modified = dt.today()
-		query = "UPDATE ewi_template SET template = '{template}', ts_modified='{ts_modified}', modifidication_by='{modification_by}' WHERE ewi_id = {ewi_id} and tag = '{tag}';"
+		query = f"UPDATE ewi_template SET template = '{template}', ts_modified='{ts_modified}', modification_by='{modification_by}' WHERE ewi_id = {ewi_id} and tag = '{tag}';"
 		ewi_data = DB.db_modify(query, 'ewi_db', True)
 		return ewi_data
 

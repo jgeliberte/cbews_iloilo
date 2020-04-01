@@ -9,7 +9,12 @@ TEMPLATE_CREATOR_BLUEPRINT = Blueprint("template_creator_blueprint", __name__)
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/add", methods=["POST"])
 def add():
     ewi_data = request.get_json()
-    return jsonify({'status': True})
+    ret_val = TemplateCreator.add(ewi_data)
+    if isinstance(int(ret_val), int) == True:
+        status = {'status': True}
+    else:
+        status = {'status': False} 
+    return jsonify(status)
 
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/delete", methods=["DELETE"])
 def delete():
@@ -19,7 +24,12 @@ def delete():
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/update", methods=["PATCH"])
 def update():
     ewi_data = request.get_json()
-    return jsonify({"status": True})
+    ret_val = TemplateCreator.update(ewi_data)
+    if int(ret_val) == 0:
+        status = {"status": True}
+    else:
+        status = {"status": False}
+    return jsonify(status)
 
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/fetch/<ewi_id>", methods=["GET"])
 def fetch(ewi_id):
