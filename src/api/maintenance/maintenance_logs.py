@@ -3,8 +3,11 @@ from flask_cors import CORS, cross_origin
 from connections import SOCKETIO
 from src.model.maintenance import Maintenance as m
 from src.api.helpers import Helpers as h
+from config import APP_CONFIG
 
-MAINTENANCE_LOGS_BLUEPRINT = Blueprint("maintenance_logs_blueprint", __name__)
+MAINTENANCE_LOGS_BLUEPRINT = Blueprint(
+    "maintenance_logs_blueprint", __name__)
+
 
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/add", methods=["POST"])
 @cross_origin()
@@ -25,6 +28,7 @@ def add():
         }
     return jsonify(return_value)
 
+
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch", methods=["POST"])
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch/<site_id>/<maintenance_log_id>", methods=["GET"])
 @cross_origin()
@@ -39,12 +43,12 @@ def fetch(site_id=None, maintenance_log_id=None):
             site_id = json_data["site_id"]
 
         result = m.fetch_maintenance_log(m,
-                    site_id=site_id, maintenance_log_id=maintenance_log_id, ts_dict=ts_dict)
+                                         site_id=site_id, maintenance_log_id=maintenance_log_id, ts_dict=ts_dict)
         response = {
             "ok": True,
             "data": result
         }
-    
+
     except Exception as err:
         print(err)
         response = {
@@ -53,6 +57,7 @@ def fetch(site_id=None, maintenance_log_id=None):
         }
 
     return jsonify(response)
+
 
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/update", methods=["POST"])
 @cross_origin()
@@ -79,6 +84,7 @@ def modify():
         }
     return jsonify(return_value)
 
+
 @MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/remove/<site_id>/<maintenance_log_id>", methods=["GET"])
 @cross_origin()
 def remove(site_id, maintenance_log_id):
@@ -94,3 +100,28 @@ def remove(site_id, maintenance_log_id):
             "message": "Failed to delete maintenance log data. Please check your network connection."
         }
     return jsonify(return_value)
+
+
+@MAINTENANCE_LOGS_BLUEPRINT.route("/maintenance/maintenance_logs/upload_log_attachment", methods=["POST"])
+@cross_origin()
+def upload_log_attachment():
+    try:
+        file = request.files['file']
+        file_path = f"{APP_CONFIG['MARIRONG_DIR']}/DOCUMENTS/MAINTENANCE_LOGS/"
+        final_path = h.upload(file=file, file_path=file_path)
+
+        response = {
+            "ok": True,
+            "message": "Log attachment OKS!",
+            "file_path": final_path
+        }
+
+    except Exception as err:
+        print(err)
+        response = {
+            "ok": True,
+            "message": "Log attachment NOT oks!",
+            "file_path": "ERROR"
+        }
+
+    return jsonify(response)

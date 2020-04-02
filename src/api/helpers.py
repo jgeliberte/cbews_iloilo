@@ -1,9 +1,37 @@
 
-import pprint
+import pprint, os
 import time as time_t
 from datetime import datetime, timedelta, time
 
 class Helpers():
+
+    def upload(file, file_path):
+        try:
+            directory = file_path
+            filename = file.filename
+
+            count = filename.count(".")
+            name_list = filename.split(".", count)
+            file_type = f".{name_list[count]}"
+            name_list.pop()
+            filename = f"{'.'.join(name_list)}"
+
+            temp = f"{filename}{file_type}"
+            uniq = 1
+            while os.path.exists(f"{directory}{temp}"):
+                temp = '%s_%d%s' % (filename, uniq, file_type)
+                uniq += 1
+
+            final_path = os.path.join(directory, temp)
+            file.save(final_path)
+
+        except Exception as err:
+            print(err)
+            final_path = "ERROR"
+
+        return final_path
+
+
 
     def round_down_data_ts(date_time):
         """
