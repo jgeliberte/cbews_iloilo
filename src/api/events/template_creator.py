@@ -18,8 +18,13 @@ def add():
 
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/delete", methods=["DELETE"])
 def delete():
-    ewi_id = request.get_json()
-    return jsonify({"status": True})
+    ewi_data = request.get_json()
+    ret_val = TemplateCreator.delete(ewi_data['ewi_id'])
+    if int(ret_val) == 0:
+        status = {"status": True}
+    else:
+        status = {"status": False}
+    return jsonify(status)
 
 @TEMPLATE_CREATOR_BLUEPRINT.route("/events/template/update", methods=["PATCH"])
 def update():
