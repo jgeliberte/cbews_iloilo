@@ -5,6 +5,27 @@ from datetime import datetime, timedelta, time
 
 class Helpers():
 
+    def fetch(path):
+        files = []
+        try:
+            cra_list = os.listdir(path)
+
+
+            for file in cra_list:
+                file_type = file.split(".")[1]
+                files.append({
+                    "filename": file,
+                    "file_type": file_type,
+                    "file_path": path
+                })
+        except FileNotFoundError:
+            files = []
+        except Exception as err:
+            raise(err)
+
+        return files
+
+
     def upload(file, file_path):
         try:
             directory = file_path
@@ -15,6 +36,13 @@ class Helpers():
             file_type = f".{name_list[count]}"
             name_list.pop()
             filename = f"{'.'.join(name_list)}"
+
+            # If the directory does not exist, create it.
+            try:
+                os.makedirs(file_path)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
 
             temp = f"{filename}{file_type}"
             uniq = 1

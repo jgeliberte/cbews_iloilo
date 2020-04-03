@@ -104,7 +104,11 @@ def remove(site_id, ir_id):
 def upload_report_attachment():
     try:
         file = request.files['file']
-        file_path = f"{APP_CONFIG['MARIRONG_DIR']}/DOCUMENTS/INCIDENT_REPORTS/"
+
+        h.var_checker("request.form", request.form, True)
+        form_json = request.form.to_dict(flat=False)
+        ir_id = form_json["ir_id"][0]
+        file_path = f"{APP_CONFIG['MARIRONG_DIR']}/DOCUMENTS/INCIDENT_REPORTS/{ir_id}/"
         final_path = h.upload(file=file, file_path=file_path)
 
         response = {
@@ -116,9 +120,34 @@ def upload_report_attachment():
     except Exception as err:
         print(err)
         response = {
-            "ok": True,
+            "ok": False,
             "message": "Report attachment NOT oks!",
             "file_path": "ERROR"
+        }
+
+    return jsonify(response)
+
+
+@INCIDENT_REPORTS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch_report_attachments/<ir_id>", methods=["GET"])
+@cross_origin()
+def fetch_report_attachments(ir_id):
+    try:
+
+        file_path = f"{APP_CONFIG['MARIRONG_DIR']}/DOCUMENTS/INCIDENT_REPORTS/{ir_id}/"
+        files = h.fetch(file_path)
+
+        response = {
+            "ok": True,
+            "message": "Report attachment fetch OKS!",
+            "data": files
+        }
+
+    except Exception as err:
+        print(err)
+        response = {
+            "ok": False,
+            "message": "Report attachment fetch NOT oks!",
+            "data": files
         }
 
     return jsonify(response)
