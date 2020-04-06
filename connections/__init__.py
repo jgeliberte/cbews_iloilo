@@ -70,7 +70,11 @@ def create_app():
     from src.api.maintenance.incident_reports import INCIDENT_REPORTS_BLUEPRINT
     app.register_blueprint(INCIDENT_REPORTS_BLUEPRINT, url_prefix="/api")
 
+    from src.api.reports import REPORTS_BLUEPRINT
+    app.register_blueprint(REPORTS_BLUEPRINT, url_prefix="/api")
+
     from src.api.test import TEST_BLUEPRINT
     app.register_blueprint(TEST_BLUEPRINT, url_prefix="/test")
+
 
     return app

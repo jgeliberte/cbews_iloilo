@@ -4,6 +4,7 @@ from pprint import pprint
 import time
 import os
 from src.model.community_risk_assessment import CommunityRiskAssessment
+from src.api.helpers import Helpers as h
 from config import APP_CONFIG
 
 COMMUNITY_RISK_ASSESSMENT_BLUEPRINT = Blueprint("community_risk_assessment", __name__)
@@ -11,17 +12,20 @@ COMMUNITY_RISK_ASSESSMENT_BLUEPRINT = Blueprint("community_risk_assessment", __n
 @COMMUNITY_RISK_ASSESSMENT_BLUEPRINT.route("/cra/community_risk_assessment/fetch", methods=["POST"])
 def fetch():
     data = request.get_json()
-    cra_list = os.listdir(data['path'])
+    basepath = data['path']
+    cra_list = os.listdir(basepath)
 
     files = []
 
     for file in cra_list:
-        file_type = file.split(".")[1]
-        files.append({
-            "filename": file,
-            "file_type": file_type,
-            "file_path": data['path']
-        })
+        path = os.path.join(basepath, file)
+        if not os.path.isdir(path):
+            file_type = file.split(".")[1]
+            files.append({
+                "filename": file,
+                "file_type": file_type,
+                "file_path": basepath
+            })
     # return {"status": True, "data": files}
     return jsonify({"status": True, "data": files})
 

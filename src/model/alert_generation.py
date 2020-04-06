@@ -27,8 +27,6 @@ class AlertGeneration():
         query += f"VALUES ('{ts_last_retrigger}', {trigger_id}, '{ts_set}', "
         query += f"'{ts_ack}', {alert_status}, '{remarks}', {user_id})"
 
-        h.var_checker("query", query, True)
-
         schema = "senslopedb"
         alert_id = DB.db_modify(query, schema, True)
 
@@ -53,16 +51,12 @@ class AlertGeneration():
                 elif index + 1 == length:
                     query += " "
 
-                h.var_checker("query", query, True)
-
             index = 0
             for item in where_dict.items():
                 sql = "AND "
                 if index == 0:
                     sql = "WHERE "
                 query += f"{sql}{item[0]} = {item[1]} "
-
-            h.var_checker("query", query, True)
 
             schema = "senslopedb"
             alert_id = DB.db_modify(query, schema, True)
@@ -326,7 +320,6 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        h.var_checker("result",result,True)
         result_list = []
         for row in result:
             result_list.append({
@@ -364,8 +357,6 @@ class AlertGeneration():
 
         query = f"{query} WHERE trigger_source = '{trigger_source}' "
         query = f"{query} AND alert_level = {alert_level}"
-
-        h.var_checker("query", query, True)
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)

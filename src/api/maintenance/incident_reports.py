@@ -128,7 +128,7 @@ def upload_report_attachment():
     return jsonify(response)
 
 
-@INCIDENT_REPORTS_BLUEPRINT.route("/maintenance/maintenance_logs/fetch_report_attachments/<ir_id>", methods=["GET"])
+@INCIDENT_REPORTS_BLUEPRINT.route("/maintenance/incident_reports/fetch_report_attachments/<ir_id>", methods=["GET"])
 @cross_origin()
 def fetch_report_attachments(ir_id):
     try:

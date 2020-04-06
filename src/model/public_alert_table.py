@@ -38,8 +38,6 @@ class PublicAlertTable():
                 sql = "WHERE "
             query += f"{sql}{item[0]} = {item[1]} "
 
-        H.var_checker("query", query, True)
-
         schema = "senslopedb"
         event_id = DB.db_modify(query, schema, True)
 
@@ -86,7 +84,6 @@ class PublicAlertTable():
 
         schema = "senslopedb"
         bulletin_number = DB.db_read(query, schema)[0]
-        H.var_checker("bultrack bulletin_number", bulletin_number, True)
 
         return bulletin_number
 
@@ -100,7 +97,6 @@ class PublicAlertTable():
 
         schema = "senslopedb"
         result = DB.db_modify(query, schema, True)
-        H.var_checker("bultrack result", result, True)
 
         return result
 

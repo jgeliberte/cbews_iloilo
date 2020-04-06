@@ -31,5 +31,6 @@ APP_CONFIG = {
     "production": ProductionConfig,
     "url": "http://localhost:3000",
     "MARIRONG_DIR": "/var/www/html/CBEWSL/MARIRONG",
-    "CANDIDATE_DIR": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen"
+    "CANDIDATE_DIR": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen",
+    "public_alert_file": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen/PublicAlertRefDB.json"
 }

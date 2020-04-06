@@ -10,7 +10,6 @@ class Maintenance():
         query = f'INSERT INTO maintenance_logs (maintenance_ts, maintenance_type, remarks, in_charge, updater) ' \
                 f'VALUES ("{maintenance_ts}", "{maintenance_type}", "{remarks}", "{in_charge}", "{updater}")'
         maintenance_log_id = DB.db_modify(query, schema, True)
-        h.var_checker("maintenance_log_id", maintenance_log_id, True)
         return maintenance_log_id
 
     def fetch_maintenance_log(self, site_id, maintenance_log_id=None, ts_dict={}):
@@ -72,7 +71,6 @@ class Maintenance():
         query = f'INSERT INTO incident_reports (report_ts, description, reporter) ' \
                 f'VALUES ("{report_ts}", "{description}", "{reporter}")'
         ir_id = DB.db_modify(query, schema, True)
-        h.var_checker("ir_id", ir_id, True)
         return ir_id
 
     def fetch_incident_report(self, site_id, ir_id=None, ts_dict={}):

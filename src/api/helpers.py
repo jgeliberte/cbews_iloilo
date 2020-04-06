@@ -3,21 +3,41 @@ import pprint, os
 import time as time_t
 from datetime import datetime, timedelta, time
 
-class Helpers():
 
+def rename_file_type(f_type):
+    temp = f_type.lower()
+    file_types_dict = {
+        "txt": "Text",
+        "pdf": "PDF",
+        "ppt": "PowerPoint Presentation",
+        "pptx": "PowerPoint Presentation",
+        "doc": "Document",
+        "docx": "Document",
+        "json": "JSON"
+    }
+    try:
+        return_type = file_types_dict[temp]
+    except KeyError:
+        return_type = "undefined"
+
+    return return_type
+
+class Helpers():
     def fetch(path):
         files = []
         try:
             cra_list = os.listdir(path)
 
-
             for file in cra_list:
-                file_type = file.split(".")[1]
-                files.append({
-                    "filename": file,
-                    "file_type": file_type,
-                    "file_path": path
-                })
+                temp = os.path.join(path, file)
+                if not os.path.isdir(temp):
+                    file_type = file.split(".")[1]
+                    formatted_type = rename_file_type(file_type)
+                    files.append({
+                        "title": file,
+                        "sub_title": formatted_type,
+                        "value": path
+                    })
         except FileNotFoundError:
             files = []
         except Exception as err:
@@ -40,9 +60,10 @@ class Helpers():
             # If the directory does not exist, create it.
             try:
                 os.makedirs(file_path)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise
+            except FileExistsError:
+                pass
+            except Exception:
+                raise
 
             temp = f"{filename}{file_type}"
             uniq = 1
@@ -54,7 +75,7 @@ class Helpers():
             file.save(final_path)
 
         except Exception as err:
-            print(err)
+            raise(err)
             final_path = "ERROR"
 
         return final_path

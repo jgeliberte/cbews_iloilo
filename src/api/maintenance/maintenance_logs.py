@@ -147,7 +147,7 @@ def fetch_log_attachments(maintenance_log_id):
         }
 
     except Exception as err:
-        raise(err)
+        print(err)
         response = {
             "ok": False,
             "message": "Log attachment fetch NOT oks!",
