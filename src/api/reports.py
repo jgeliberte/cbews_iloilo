@@ -18,38 +18,36 @@ REPORTS_BLUEPRINT = Blueprint("reports_blueprint", __name__)
 
 @REPORTS_BLUEPRINT.route("/reports/send_email", methods=["POST"])
 def field_survey_data_via_email():
-    data = request.form
+    data = request.get_json()
     status = None
     message = ""
 
     try:
         report = data["html"]
         date = data["date"]
+        subject = data["subject"]
+        filename = data["filename"]
+        send_to_email = data["email"]
 
-        email = "jason.ortega033@gmail.com"
-        password = "ortegaJASON033"
-        # send_to_email = data["email"]
-        subject = "Field Survey : " + str(date)
+        email = "dynaslopeswat@gmail.com"
+        password = "dynaslopeswat"
+        subject = "[TEST] : " + str(date)
 
         msg = MIMEMultipart()
         msg['From'] = email
-        # msg['To'] = send_to_email
-        msg['To'] = "jlouienepomuceno@gmail.com"
+        msg['To'] = send_to_email
         msg['Subject'] = subject
-        header = "<p>TEST</p>"
-        footer = "<p>TEST</p>"
-        # header = "<img src='http://cbewsl.com/assets/images/letter_header1.png' style='width: 100%'/><img src='http://cbewsl.com/assets/images/banner_new.png' style='width: 100%'/>"
-        # footer = "<img src='http://cbewsl.com/assets/images/letter_footer1.png' style='width: 100%;  position: fixed; bottom: 0;'/>"
+        header = "<img src='http://localhost/CBEWSL/MARIRONG/ASSETS/letter_header.png' style='width: 100%'/>"
+        # header += "<img src='http://localhost/CBEWSL/MARIRONG/ASSETS/banner_new.png' style='width: 100%'/>"
+        footer = "<img src='http://localhost/CBEWSL/MARIRONG/ASSETS/letter_footer.png' style='width: 100%;  position: fixed; bottom: 0;'/>"
         paddingTop = "<div style='padding-top: 100px;'></div>"
         paddingBottom = "<div style='padding-top: 700px;'></div>"
 
         render_pdf = header+paddingTop+report+paddingBottom+footer
-
-        pdfkit.from_string(render_pdf,'report.pdf')
-        
-        with open('report.pdf', 'rb') as f:
-            mime = MIMEBase('image', 'png', filename='report.pdf')
-            mime.add_header('Content-Disposition', 'attachment', filename='report.pdf')
+        pdfkit.from_string(render_pdf,f'{filename}.pdf')
+        with open(f'{filename}.pdf', 'rb') as f:
+            mime = MIMEBase('image', 'png', filename=f'{filename}.pdf')
+            mime.add_header('Content-Disposition', 'attachment', filename=f'{filename}.pdf')
             mime.add_header('X-Attachment-Id', '0')
             mime.add_header('Content-ID', '<0>')
             mime.set_payload(f.read())
@@ -66,8 +64,7 @@ def field_survey_data_via_email():
         status = True
         message = "Email sent successfully!"
     except Exception as err:
-        print(err)
-        DB.session.rollback()
+        raise(err)
         status = False
         message = "No internet connection."
 
