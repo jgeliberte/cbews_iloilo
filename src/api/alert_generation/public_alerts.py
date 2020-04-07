@@ -64,7 +64,6 @@ def get_mar_alert_validation_data():
         mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
         new_rel_trigs = []
         as_of_ts = h.dt_to_str(h.round_down_data_ts(dt.now()))
-        h.var_checker("mar_data", mar_data, True)
         if mar_data:
             release_triggers = mar_data["release_triggers"]
 
@@ -82,8 +81,6 @@ def get_mar_alert_validation_data():
                 "as_of_ts": as_of_ts,
                 "all_validated": True
             }
-
-            h.var_checker("data er", data, True)
 
             response = {
                 "data": data,
@@ -120,7 +117,6 @@ def validate_trigger():
     try:
         AG = AlertGeneration
         json_input = request.get_json()
-        h.var_checker("json_input", json_input, True)
         trigger_id = json_input["trigger_id"]
         alert_status = json_input["alert_status"]
         remarks = json_input["remarks"]
@@ -171,7 +167,6 @@ def validate_trigger():
             "status": 404
         }
 
-    h.var_checker("response", response, True)
     return jsonify(response)
 
 
@@ -194,7 +189,6 @@ def format_release_triggers(payload, process_one=False):
         list_to_process = [payload]
 
     for trig in list_to_process:
-        h.var_checker("trig", trig, True)
         (trigger_id, release_id, trigger_type, timestamp, info) = trig[0]
         trigger_source = AG.get_internal_alert_symbol_row(trigger_type, return_col="trigger_source")
         alert_level = AG.get_internal_alert_symbol_row(trigger_type, return_col="alert_level")
@@ -283,8 +277,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                     str_data_ts_ymd = dt.strftime(rounded_data_ts, "%Y-%m-%d")
                     str_release_time = str(release_time)
                     release_time = f"{str_data_ts_ymd} {str_release_time}"
-                
-                h.var_checker("release_time", release_time, True)
                 
                 internal_alert = internal_alert_level
                 event_data["site_id"] = site_id
@@ -375,7 +367,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
             "message": "Success",
             "data": active_events_dict
         }
-        # h.var_checker("active_events_dict", active_events_dict, True)
 
     except Exception as err:
         raise err
@@ -406,9 +397,7 @@ def adjust_bulletin_number(site_id):
     """
     try:
         bulletin_number = PAT.fetch_site_bulletin_number(site_id=50)
-        H.var_checker("bulletin_number", bulletin_number, True)
         new_bulletin_number = PAT.update_bulletin_number(site_id=50, bulletin_number=bulletin_number+1)
-        H.var_checker("new_bulletin_number", new_bulletin_number, True)
 
         return_data = new_bulletin_number
     except Exception as err:
@@ -422,7 +411,6 @@ def adjust_bulletin_number(site_id):
 def insert_ewi(internal_ewi_data=None):
     """
     """
-    h.var_checker("insert_ewi json_data", json_data, True)
 
     try:
         release_id = None
@@ -459,7 +447,6 @@ def insert_ewi(internal_ewi_data=None):
                     site_id=site_id, event_start=data_ts, latest_rel_id=None,
                     latest_trig_id=None, validity=validity, status=status
                 )
-                H.var_checker("event_id", event_id, True)
 
                 release_dict["event_id"] = event_id
                 release_dict["internal_alert_level"] = routine_entry["internal_alert"]

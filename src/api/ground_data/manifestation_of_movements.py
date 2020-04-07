@@ -28,7 +28,6 @@ def test1():
     trigger_symbol = AlertGen.get_operational_trigger_symbol(
                                 trigger_source='moms',
                                 alert_level=alert_level)
-    var_checker("trigger_symbol", trigger_symbol, True)
     
     return "done"
 

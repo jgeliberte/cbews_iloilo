@@ -36,7 +36,6 @@ def prepare_sites_for_routine_release(no_alerts, excluded_indexes_list, invalid_
             ts = entry["ts"]
             month = h.str_to_dt(ts).month
             site_detail = Sites.get_site_details(filter_value=site_code, site_filter="site_code")
-            h.var_checker("site_detail", site_detail, True)
             season = site_detail["season"]
 
             if month in matrix[season - 1]:
@@ -195,7 +194,6 @@ def adjust_alert_level_if_invalid_sensor(public_alert, entry):
 def get_all_invalid_triggers_of_site(site_code, invalids_list):
     invalid_site_triggers_list = []
     invalid_site_triggers_list = list(filter(lambda x: x["site_code"] == site_code, invalids_list))
-    h.var_checker("invalid_site_triggers_list", invalid_site_triggers_list, True)
 
     return sorted(invalid_site_triggers_list, key=lambda x: x["public_alert_symbol"][1], reverse=True)
 
@@ -225,17 +223,14 @@ def fix_internal_alert_invalids_0(entry, invalids):
 
     is_valid_but_needs_manual = False
     for s_invalid in site_invalids_list:
-        h.var_checker("s_invalid", s_invalid, True)
         # NOTE ARRAY INDEX is the position of site in the DB ALERTS
         alert_index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == s_invalid["site_code"]), -1)
         public_alert = s_invalid["public_alert_symbol"]
 
         invalid_trigger = s_invalid["trigger_source"]
         alerts_source_list = list(entry_source)
-        h.var_checker("alerts_source_list", alerts_source_list, True)
 
         for source in alerts_source_list:
-            h.var_checker("source", source, True)
             temp = getTriggerSource(source)
             if temp == invalid_trigger:
                 entry["invalid_list"].append(s_invalid)
@@ -294,7 +289,6 @@ def fix_internal_alert_invalids_0(entry, invalids):
 
 
 def tag_invalid_triggers(triggers_list, invalid_symbols_list):
-    h.var_checker("BEFORE invalid tagging triggers_list", triggers_list, True)
     alert_lvl_list = []
     for trig in triggers_list:
         if trig["alert"] in invalid_symbols_list:
@@ -306,7 +300,6 @@ def tag_invalid_triggers(triggers_list, invalid_symbols_list):
             is_invalid = { "is_invalid": False }
         trig.update(is_invalid)
 
-    h.var_checker("AFTER invalid tagging triggers_list", triggers_list, True)
     candidate_alert_lvl = max(alert_lvl_list)
     return triggers_list, candidate_alert_lvl
 
@@ -354,24 +347,18 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
         # GET THE ND and Actual Internal Alert Symbol of the Invalid Trigger to be removed from 
         # candidate internal alert
         nd_ias_symbol = AG.get_ias_by_lvl_source(trigger_source, -1, "ias.alert_symbol")
-        h.var_checker("trig_alert_level", trig_alert_level, True)
         ias_symbol = AG.get_ias_by_lvl_source(trigger_source, trig_alert_level, "ias.alert_symbol")
-        h.var_checker("ias_symbol", ias_symbol, True)
         ias_checklist = [nd_ias_symbol, ias_symbol]
-        h.var_checker("ias_checklist", ias_checklist, True)
 
         if ias_checklist:
             for symbol in ias_checklist:
                 if symbol not in current_entry_source: # not yet released
-                    h.var_checker("candidate_entry_source", candidate_entry_source, True)
                     if symbol in candidate_entry_source:
-                        print("FAKKEEER")
                         invalid_list.append(invalid_trigger)
                         invalid_symbols_list.append(symbol)
                         entry["status"] = "has_invalid"
                         candidate_entry_source = candidate_entry_source.replace(symbol, "")
         else:
-            h.var_checker("ias_symbol", ias_symbol, True)
             raise("ERROR IN GETTING IAS_SYMBOL FOR INVALIDS")
 
     # MARK INVALID TRIGGERS 
@@ -399,8 +386,6 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
     else:
         internal_alert = "A0"
 
-    h.var_checker("public_alert", public_alert, True)
-    h.var_checker("internal_alert", internal_alert, True)
     entry.update({
         "public_alert": public_alert,
         "public_alert_level": candidate_alert_level,
@@ -521,11 +506,6 @@ def prepare_candidate_for_release(candidate, merged_list=None):
         }
 
         new_trigger_list.append(trigger_payload)
-
-
-
-    # h.var_checker("event_triggers", event_triggers, True)
-    # rel_trigs = identify_release_triggers(raw_triggers, tech_info)
     
     release_related_attributes = {
         "ts": candidate["ts"],
@@ -605,14 +585,13 @@ def main(to_update_pub_alerts=False, internal_gen_data=None):
     generated_alerts_dict = []
 
     if to_update_pub_alerts:
-        print("FAK")
-        os.system("python /home/louie-cbews/CODES/cbews_iloilo/analysis_pycodes/analysis/publicalerts.py")
+        os.system("python ~/CODES/cbews_iloilo/analysis_pycodes/analysis/publicalerts.py")
 
     if internal_gen_data:
         generated_alerts_dict = internal_gen_data
     else:
         generated_alerts_dict = []
-        full_filepath = "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen/PublicAlertRefDB.json"
+        full_filepath = APP_CONFIG["public_alert_file"]
         print(f"Getting data from {full_filepath}")
         print()
 
@@ -631,7 +610,6 @@ def main(to_update_pub_alerts=False, internal_gen_data=None):
     json_data = json.dumps(candidate_alerts_list)
 
     directory = APP_CONFIG['CANDIDATE_DIR']
-    # h.var_checker("directory", directory, True)
     if not os.path.exists(directory):
         os.makedirs(directory)
 

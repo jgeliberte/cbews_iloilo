@@ -1,9 +1,86 @@
 
-import pprint
+import pprint, os
 import time as time_t
 from datetime import datetime, timedelta, time
 
+
+def rename_file_type(f_type):
+    temp = f_type.lower()
+    file_types_dict = {
+        "txt": "Text",
+        "pdf": "PDF",
+        "ppt": "PowerPoint Presentation",
+        "pptx": "PowerPoint Presentation",
+        "doc": "Document",
+        "docx": "Document",
+        "json": "JSON"
+    }
+    try:
+        return_type = file_types_dict[temp]
+    except KeyError:
+        return_type = "undefined"
+
+    return return_type
+
 class Helpers():
+    def fetch(path):
+        files = []
+        try:
+            cra_list = os.listdir(path)
+
+            for file in cra_list:
+                temp = os.path.join(path, file)
+                if not os.path.isdir(temp):
+                    file_type = file.split(".")[1]
+                    formatted_type = rename_file_type(file_type)
+                    files.append({
+                        "title": file,
+                        "sub_title": formatted_type,
+                        "value": path
+                    })
+        except FileNotFoundError:
+            files = []
+        except Exception as err:
+            raise(err)
+
+        return files
+
+
+    def upload(file, file_path):
+        try:
+            directory = file_path
+            filename = file.filename
+
+            count = filename.count(".")
+            name_list = filename.split(".", count)
+            file_type = f".{name_list[count]}"
+            name_list.pop()
+            filename = f"{'.'.join(name_list)}"
+
+            # If the directory does not exist, create it.
+            try:
+                os.makedirs(file_path)
+            except FileExistsError:
+                pass
+            except Exception:
+                raise
+
+            temp = f"{filename}{file_type}"
+            uniq = 1
+            while os.path.exists(f"{directory}{temp}"):
+                temp = '%s_%d%s' % (filename, uniq, file_type)
+                uniq += 1
+
+            final_path = os.path.join(directory, temp)
+            file.save(final_path)
+
+        except Exception as err:
+            raise(err)
+            final_path = "ERROR"
+
+        return final_path
+
+
 
     def round_down_data_ts(date_time):
         """
