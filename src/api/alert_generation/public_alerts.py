@@ -240,7 +240,11 @@ def get_unique_trigger_per_type(trigger_list):
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/get_ongoing_and_extended_monitoring/<run_ts>", methods=["GET"])
 def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
     """
-    return
+    returns dictionary of lists
+
+    Args:
+        run_ts (Datetime)
+        source (String)
     """
     ROU_EXT_RELEASE_TIME = 12
     release_interval_hours = 4
@@ -381,6 +385,43 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
         return json.dumps(alerts_list)
 
 
+@PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/public_alerts/get_site_current_status/<site_id>", methods=["GET"])
+def get_site_current_status(site_id):
+    """
+
+    """
+    try:
+        current_alerts = get_ongoing_and_extended_monitoring(source="within")
+        current_alerts = json.loads(current_alerts)["data"]
+        status_keys = list(current_alerts.keys())
+        status = ""
+        data = None
+
+        h.var_checker("current_alerts", current_alerts, True)
+
+        for key in status_keys:
+            row = next(filter(lambda x: x["site_id"] == site_id, current_alerts[key]), None)
+            if row:
+                data = row
+                status = key
+                break
+        
+        return_dict = {
+            "data": data,
+            "message": "worked",
+            "ok": True
+        }
+    except Exception as err:
+        raise(err)
+        return_dict = {
+            "data": None,
+            "message": "Didnt work",
+            "ok": "SHET"
+        }
+
+    return jsonify(return_dict)
+
+
 #############################
 # insert_ewi util functions #
 #############################
@@ -388,7 +429,22 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 def save_triggers(ewi_data, event_id, release_id, current_validity):
     """
     """
-    print()
+    print(ewi_data)
+    release_triggers = ewi_data["release_triggers"]
+    latest_trigger_id = None
+    for trigger in release_triggers:
+        trigger_type = trigger["trigger_type"]
+        timestamp = trigger["timestamp"]
+        info = trigger["info"]
+        pat_trigger_id = PAT.insert_public_alert_trigger(event_id, release_id, trigger_type, timestamp, info)
+        latest_trigger_id = pat_trigger_id
+        print(f"Public alert trigger written with ID {pat_trigger_id}")
+
+    validity = current_validity
+    if h.str_to_dt(current_validity) < h.str_to_dt(ewi_data["validity"]):
+        validity = h.str_to_dt(ewi_data["validity"])
+    
+    return pat_trigger_id, validity
 
 
 def adjust_bulletin_number(site_id):
@@ -504,9 +560,17 @@ def insert_ewi(internal_ewi_data=None):
                 if "extend_ND" in ewi_data or "extend_rain_x" in ewi_data:
                     update_event_container["validity"] = h.str_to_dt(validity) + timedelta(hours=4)
                 else:
-                    return_list = save_triggers(ewi_data, event_id, release_id, validity)
-                    update_event_container = update_event_container
-
+                    latest_trigger_id, validity = save_triggers(ewi_data, event_id, release_id, validity)
+                    update_event_container.update({
+                        "latest_trigger_id": latest_trigger_id,
+                        "validity": validity
+                    })
+            
+            # TODO: UDPATE EVENT HERE
+            event_id = PAT.update_public_alert_event(update_event_container, {
+                "event_id": event_id
+            })
+            print(f"Event ID {event_id} was updated")
 
     except Exception as err:
         print(err)
