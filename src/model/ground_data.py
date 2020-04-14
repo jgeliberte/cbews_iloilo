@@ -169,7 +169,7 @@ class GroundData():
                 validator = reporter_id
             query = "INSERT INTO monitoring_moms "
             query += "(instance_id, observance_ts, reporter_id, remarks, validator, op_trigger)"
-            query += f"VALUES ({instance}, {ts}, {reporter_id}, {remarks}, {validator}, {alert_level})"
+            query += f"VALUES ({instance}, '{ts}', {reporter_id}, '{remarks}', {validator}, {alert_level})"
 
             status = DB.db_modify(query, 'senslopedb', True)
             result = {"status": True, "data": status}

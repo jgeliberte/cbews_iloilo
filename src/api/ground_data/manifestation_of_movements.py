@@ -72,7 +72,7 @@ def add():
             result = AlertGen.update_operational_trigger(
                 op_trig_id=trigger_id,
                 trig_sym_id=trigger_sym_id,
-                ts_updated=ts_updated
+                ts_updated=ts
             )
 
         if moms_id['status'] == True:
@@ -88,6 +88,7 @@ def add():
                 "message": f"Failed to add moms data."
             }
     except Exception as err:
+        raise(err)
         moms = {
             "status": False,
             "message": f"Failed to fetch moms data. Error: {err}"

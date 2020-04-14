@@ -742,6 +742,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
     else:
         validity = ''
         public_alert = 0
+        has_no_ground_data = ground_alert == -1
         internal_alert = internal_symbols[(internal_symbols.alert_level == \
                          ground_alert) & (internal_symbols.source_id == \
                          internal_id)]['alert_symbol'].values[0]
@@ -868,7 +869,7 @@ def main(end=datetime.now()):
     # site id and code
     query = "SELECT site_id, site_code FROM commons_db.sites WHERE active = 1"
     props = qdb.get_db_dataframe(query)
-    props = props[props.site_code == 'umi']
+    props = props[props.site_code == 'mar']
     site_props = props.groupby('site_id', as_index=False)
     alerts = site_props.apply(site_public_alert, end=end,
                               public_symbols=public_symbols,
@@ -891,7 +892,7 @@ def main(end=datetime.now()):
 
     columns = ['iomp', 'site_code', 'alert_symbol', 'ts_last_retrigger', 'alert_level', 'remarks', 'trigger_source', 'alert_status', 'public_alert_symbol']
     invalid_alerts = pd.DataFrame(columns=columns)
-    
+    var_checker("current_alerts", current_alerts, True)
     try:
         for site in current_alerts.site_code.unique():
             site_df = current_alerts[current_alerts.site_code == site]
@@ -906,10 +907,12 @@ def main(end=datetime.now()):
         invalid_alerts = invalid_alerts.drop_duplicates(['alert_symbol', 'site_code'])
         invalid_alerts['ts_last_retrigger'] = invalid_alerts['ts_last_retrigger'].apply(lambda x: str(x))
 
+    except AttributeError as att_err:
+        print("Empty dataframe")
+        invalid_alerts = pd.DataFrame()
     except Exception as err:
         raise(err)
-        invalid_alerts = pd.DataFrame()
-    
+
     all_alerts = pd.DataFrame({'invalids': [invalid_alerts], 'alerts': [alerts]})
 
     public_json = all_alerts.to_json(orient="records")
