@@ -35,7 +35,6 @@ def test1():
 @MANIFESTATION_OF_MOVEMENTS_BLUEPRINT.route("/ground_data/moms/add", methods=["POST"])
 def add():
     try:
-        print(request.get_json())
         (ts, feature_id, feature_name, reporter, location, description, site_id, user_id, alert_level) = request.get_json().values()
         instance = GroundData.fetch_feature_name(feature_id, feature_name, site_id)
         if len(instance) == 0:
@@ -74,7 +73,7 @@ def add():
                 trig_sym_id=trigger_sym_id,
                 ts_updated=ts
             )
-
+        print("GO HERE HERE HERE HERE")
         if moms_id['status'] == True:
             moms = {
                 "status": False,
@@ -95,6 +94,64 @@ def add():
         }
     return jsonify(moms)
 
+@MANIFESTATION_OF_MOVEMENTS_BLUEPRINT.route("/ground_data/moms/update", methods=["POST"])
+def update():
+    try:
+        (ts, feature_id, feature_name, reporter, location, remarks, site_id, user_id, alert_level, moms_id) = request.get_json().values()
+        instance = GroundData.fetch_feature_name(feature_id, feature_name, site_id)
+        if len(instance) == 0:
+            instance = GroundData.insert_moms_instance(site_id, feature_id, feature_name, 
+                                                            location, reporter)
+        else:
+            instance = instance[0][0]
+        moms_instance_update = GroundData.update_moms_instance(instance, location, reporter)
+        if moms_instance_update['status'] == True:
+            moms_monitoring_update = GroundData.update_monitoring_moms(moms_id, remarks)
+            if moms_monitoring_update['status'] == True:
+                moms = {
+                    "status": True,
+                    "message": "Successfully updated Manifestation of Movements."
+                }
+            else:
+                moms = {
+                    "status": False,
+                    "message": "Failed to update monitoring_moms table (remarks) data."
+                }
+        else:
+            moms = {
+                "status": False,
+                "message": "Failed to update moms instance table (location, reporter) data."
+            }
+    except Exception as err:
+        raise(err)
+        moms = {
+            "status": False,
+            "message": f"Failed to fetch moms data. Error: {err}"
+        }
+    return jsonify(moms)
+
+@MANIFESTATION_OF_MOVEMENTS_BLUEPRINT.route("/ground_data/moms/delete", methods=["delete"])
+def delete():
+    try:
+        moms = request.get_json()
+        moms_delete = GroundData.delete_moms_observation(moms['moms_id'])
+        if moms_delete['status'] == True:
+            moms = {
+                "status": True,
+                "message": "Successfully deleted Manifestation of Movements data."
+            }
+        else:
+            moms = {
+                "status": False,
+                "message": "Failed to delete moms data."
+            }
+    except Exception as err:
+        raise(err)
+        moms = {
+            "status": False,
+            "message": f"Failed to fetch moms data. Error: {err}"
+        }
+    return jsonify(moms)
 
 @MANIFESTATION_OF_MOVEMENTS_BLUEPRINT.route("/ground_data/moms/fetch/feature/<feature_id>/<site_id>", methods=["GET"])
 def fetch_feature(feature_id, site_id):
