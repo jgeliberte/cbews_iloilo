@@ -892,7 +892,6 @@ def main(end=datetime.now()):
 
     columns = ['iomp', 'site_code', 'alert_symbol', 'ts_last_retrigger', 'alert_level', 'remarks', 'trigger_source', 'alert_status', 'public_alert_symbol']
     invalid_alerts = pd.DataFrame(columns=columns)
-    var_checker("current_alerts", current_alerts, True)
     try:
         for site in current_alerts.site_code.unique():
             site_df = current_alerts[current_alerts.site_code == site]

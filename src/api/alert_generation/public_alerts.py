@@ -46,7 +46,8 @@ def prepare_triggers(row):
         "trigger": trigger_source.capitalize(),
         "data_source": data_source,
         "description": info,
-        "trigger_id": row["trigger_id"]
+        "trigger_id": row["trigger_id"],
+        "is_invalid": row["is_invalid"]
     }
 
 @PUBLIC_ALERTS_BLUEPRINT.route("/alert_gen/UI/get_mar_alert_validation_data", methods=["GET"])
@@ -61,7 +62,7 @@ def get_mar_alert_validation_data():
     }
     try:
         json_data = json.loads(candidate_alerts_generator.main(to_update_pub_alerts=True))
-        mar_data = next(filter(lambda x: x["site_code"] == "umi", json_data), None)
+        mar_data = next(filter(lambda x: x["site_code"] == "mar", json_data), None)
         new_rel_trigs = []
         as_of_ts = h.dt_to_str(h.round_down_data_ts(dt.now()))
         if mar_data:

@@ -64,7 +64,8 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
                         "status": "extended",
                         "latest_trigger_timestamp": "extended",
                         "trigger": "extended",
-                        "validity": "extended"
+                        "validity": "extended",
+                        "public_alert_level": 0
                     })
                     x = prepare_candidate_for_release(x)
                     return_arr.append(x)
@@ -87,10 +88,11 @@ def tag_sites_for_lowering(merged_list, no_alerts):
 
             if data_ts != x["ts"] and internal_alert_level not in ["A0", "ND"]:
                 x.update({
-                    "status": "valid",
-                    "latest_trigger_timestamp": "end",
-                    "trigger": "No new triggers",
-                    "validity": "end"
+                    "status": "lowering",
+                    "latest_trigger_timestamp": None,
+                    "trigger": [],
+                    "validity": None,
+                    "public_alert_level": 0
                 })
 
                 x = prepare_candidate_for_release(x, merged_list)
@@ -193,8 +195,13 @@ def adjust_alert_level_if_invalid_sensor(public_alert, entry):
 
 def get_all_invalid_triggers_of_site(site_code, invalids_list):
     invalid_site_triggers_list = []
-    invalid_site_triggers_list = list(filter(lambda x: x["site_code"] == site_code, invalids_list))
+    # invalid_site_triggers_list = list(filter(lambda x: x["site_code"] == site_code, invalids_list))
 
+    for trigger in invalids_list:
+        trig_ts = trigger["ts_last_retrigger"]
+        if trigger["site_code"] == site_code and \
+            (h.str_to_dt(trig_ts) + timedelta(days=1)) > h.round_down_data_ts(dt.now()):
+            invalid_site_triggers_list.append(trigger)
     return sorted(invalid_site_triggers_list, key=lambda x: x["public_alert_symbol"][1], reverse=True)
 
 
@@ -215,85 +222,11 @@ def getTriggerSource(source):
     return trig
 
 
-def fix_internal_alert_invalids_0(entry, invalids):
-    """Old code
-    """
-    site_code = entry["site_code"]
-    site_invalids_list = get_all_invalid_triggers_of_site(site_code, invalids)
-
-    is_valid_but_needs_manual = False
-    for s_invalid in site_invalids_list:
-        # NOTE ARRAY INDEX is the position of site in the DB ALERTS
-        alert_index = next((index for (index, d) in enumerate(merged_list) if d["site_code"] == s_invalid["site_code"]), -1)
-        public_alert = s_invalid["public_alert_symbol"]
-
-        invalid_trigger = s_invalid["trigger_source"]
-        alerts_source_list = list(entry_source)
-
-        for source in alerts_source_list:
-            temp = getTriggerSource(source)
-            if temp == invalid_trigger:
-                entry["invalid_list"].append(s_invalid)
-
-                # Check if alert exists on database
-                if alert_index == -1 and len(alerts_source_list) == 1:
-                    entry["status"] = "invalid"
-                else:
-                    entry["status"] = "partial"
-                
-                trigger_letter = "Z"
-                if source == "subsurface":
-                    trigger_letter = "S"
-                elif source == "rainfall":
-                    trigger_letter = "R"
-
-                is_present_on_proposed_internal_alert = False
-                is_R_present = False
-                is_S_present = -1
-                if alert_index > -1:
-                    internal_alert_level = merged_list[alert_index]["internal_alert_level"]
-                    # temp = 
-                    up_t_letter = trigger_letter.upper()
-                    low_t_letter = trigger_letter.lower()
-                    is_present_on_proposed_internal_alert = up_t_letter in internal_alert or low_t_letter in internal_alert
-                    is_R_present = "R" in internal_alert
-                    is_S_present = "s" in internal_alert and "S" in internal_alert
-                
-                if alert_index == -1 or is_present_on_proposed_internal_alert:
-                    return_dict = None
-                    if source == "subsurface":
-                        if is_S_present:
-                            is_valid_but_needs_manual = True
-                        else:
-                            return_dict = adjust_alert_level_if_invalid_sensor(public_alert, entry)
-                    elif source == "rainfall":
-                        if is_R_present:
-                            is_valid_but_needs_manual = True
-                        else:
-                            return_dict = adjust_alert_level_if_invalid_rain(entry)
-
-                    if return_dict:
-                        invalid_index = return_dict["invalid_index"]
-                        entry = entry.update(entry)
-                        entry = entry.update(return_dict)
-                        entry["triggers"]["invalid_index"]["invalid"] = True
-
-    if len(entry["internal_alert"]) <= 3:
-        entry["status"] = "invalid"
-
-    if not is_valid_but_needs_manual:
-        return_dict = get_latest_trigger(entry)
-        entry.update(return_dict)
-    
-    return entry
-
-
 def tag_invalid_triggers(triggers_list, invalid_symbols_list):
     alert_lvl_list = []
     for trig in triggers_list:
-        h.var_checker("alert", trig["alert"], True)
-        h.var_checker("invalid_symbols_list", invalid_symbols_list, True)
-        if trig["alert"] in invalid_symbols_list:
+        candidate_trig_ias = AG.get_internal_alert_symbol_row(trigger_symbol=trig["alert"], return_col="ias.alert_symbol")
+        if candidate_trig_ias in invalid_symbols_list:
             # IF Invalid
             is_invalid = { "is_invalid": True }
         else:
@@ -302,7 +235,16 @@ def tag_invalid_triggers(triggers_list, invalid_symbols_list):
             is_invalid = { "is_invalid": False }
         trig.update(is_invalid)
 
-    candidate_alert_lvl = max(alert_lvl_list)
+        result = AG.fetch_alert_status(AG, trig["trigger_id"])
+        has_alert_status = False
+        if result:
+            has_alert_status = True
+        trig.update({"has_alert_status": has_alert_status})
+
+    candidate_alert_lvl = 0
+    if alert_lvl_list:
+        candidate_alert_lvl = max(alert_lvl_list)
+
     return triggers_list, candidate_alert_lvl
 
 
@@ -385,13 +327,16 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
                     internal_alert = public_alert
         if candidate_entry_source:
             internal_alert = f"{public_alert}-{candidate_entry_source}"
+        status = "alert"
     else:
         internal_alert = "A0"
+        status = "no_alert"
 
     entry.update({
         "public_alert": public_alert,
         "public_alert_level": candidate_alert_level,
-        "internal_alert": internal_alert
+        "internal_alert": internal_alert,
+        "status": status
     })
 
     return entry
@@ -487,12 +432,17 @@ def prepare_candidate_for_release(candidate, merged_list=None):
     raw_triggers = candidate["triggers"]
     tech_info_dict = candidate["tech_info"]
     new_trigger_list = []
+    all_validated = True
     for trigger in raw_triggers:
+        if not trigger["has_alert_status"]:
+            all_validated = False
         source_id = trigger["source_id"]
         trigger_source = AG.get_trigger_hierarchy(source_id, "trigger_source")
         ots_symbol = trigger["alert"]
         trigger_type = AG.get_internal_alert_symbol_row(trigger_symbol=ots_symbol, return_col="ias.alert_symbol")
         tech_info = tech_info_dict[trigger_source]
+
+        h.var_checker("trigger", trigger, True)
 
         trigger_payload = {
             "trigger_type": trigger_type,
@@ -524,11 +474,12 @@ def prepare_candidate_for_release(candidate, merged_list=None):
         "release_time": h.dt_to_str(dt.now()),
         "data_ts": candidate["ts"],
         "release_triggers": new_trigger_list,
-        "public_alert_level": int(candidate["public_alert"][1]),
+        "public_alert_level": candidate["public_alert_level"],
         "internal_alert": candidate["internal_alert"],
         "public_alert": candidate["public_alert"],
         "is_release_time": is_release_time, 
-        "is_new_release": is_new_release
+        "is_new_release": is_new_release,
+        "all_validated": all_validated
     }
     # candidate.update(release_related_attributes)
     # return candidate
