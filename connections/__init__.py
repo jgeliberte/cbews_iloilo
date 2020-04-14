@@ -75,9 +75,11 @@ def create_app():
 
     from src.api.events.template_creator import TEMPLATE_CREATOR_BLUEPRINT
     app.register_blueprint(TEMPLATE_CREATOR_BLUEPRINT, url_prefix="/api")
+
+    from src.api.ground_data.on_demand import ON_DEMAND_BLUEPRINT
+    app.register_blueprint(ON_DEMAND_BLUEPRINT, url_prefix="/api")
     
     from src.api.test import TEST_BLUEPRINT
     app.register_blueprint(TEST_BLUEPRINT, url_prefix="/test")
-
-
+    
     return app

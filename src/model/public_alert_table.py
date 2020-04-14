@@ -17,6 +17,7 @@ class PublicAlertTable():
 
         return event_id
 
+
     def update_public_alert_event(self, update_dict, where_dict):
         """
         """
