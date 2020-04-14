@@ -291,6 +291,8 @@ def fix_internal_alert_invalids_0(entry, invalids):
 def tag_invalid_triggers(triggers_list, invalid_symbols_list):
     alert_lvl_list = []
     for trig in triggers_list:
+        h.var_checker("alert", trig["alert"], True)
+        h.var_checker("invalid_symbols_list", invalid_symbols_list, True)
         if trig["alert"] in invalid_symbols_list:
             # IF Invalid
             is_invalid = { "is_invalid": True }

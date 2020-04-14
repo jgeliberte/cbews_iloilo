@@ -107,7 +107,7 @@ class AlertGeneration():
         ts = ts_updated
         query = "INSERT INTO senslopedb.operational_triggers "
         query += "(ts, site_id, trigger_sym_id, ts_updated) "
-        query += f"VALUES ({ts}, {site_id}, {trig_sym_id}, {ts_updated})"
+        query += f"VALUES ('{ts}', {site_id}, {trig_sym_id}, '{ts_updated}')"
 
         schema = "senslopedb"
         trigger_id = DB.db_modify(query, schema, True)
@@ -123,9 +123,10 @@ class AlertGeneration():
             trig_sym_id (int) - trigger_sym_id - the kind of trigger
             ts_updated (str/datetime) - updating ts_updated
         """
-        query = "UPDATE senslopedb.operational_triggers "
-        query += f"SET trigger_sym_id={trig_sym_id}, trigger_sym_id={trig_sym_id}, ts_updated={ts_updated})"
+        query = f"UPDATE senslopedb.operational_triggers "
+        query += f"SET trigger_sym_id={trig_sym_id}, ts_updated='{ts_updated}' "
         query += f"WHERE trigger_id = {op_trig_id}"
+
 
         schema = "senslopedb"
         result = DB.db_modify(query, schema, True)
@@ -147,15 +148,19 @@ class AlertGeneration():
         query += "ORDER BY ts_updated DESC"
 
         schema = "senslopedb"
-        result = DB.db_read(query, schema)[0]
+        result = DB.db_read(query, schema)
 
-        return_dict = {
-            "trigger_id": result["trigger_id"],
-            "ts": result["ts"],
-            "site_id": result["site_id"],
-            "trigger_sym_id": result["trigger_sym_id"],
-            "ts_updated": result["ts_updated"]
-        }
+        return_dict = None
+        if result:
+            result = result[0]
+
+            return_dict = {
+                "trigger_id": result[0],
+                "ts": result[1],
+                "site_id": result[2],
+                "trigger_sym_id": result[3],
+                "ts_updated": result[4]
+            }
         return return_dict
 
 
@@ -419,8 +424,12 @@ class AlertGeneration():
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)
+        
+        return_data = result[0]
+        if return_col:
+            return_data = result[0][0]
 
-        return result[0]
+        return return_data
 
     def get_trigger_hierarchy(source_id, return_col=None):
         select_option = "*"
