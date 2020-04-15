@@ -58,8 +58,9 @@ def modify():
         }
     return jsonify(return_value)
 
-@CAPACITY_AND_VULNERABILITY_BLUEPRINT.route("/cra/capacity_and_vulnerability/remove/<site_id>/<cav_id>", methods=["DELETE"])
-def remove(cav_id, site_id):
+@CAPACITY_AND_VULNERABILITY_BLUEPRINT.route("/cra/capacity_and_vulnerability/remove", methods=["DELETE"])
+def remove():
+    (cav_id, site_id) = request.get_json().values()
     status = CommunityRiskAssessment.delete_cav(cav_id, site_id)
     if status is not None:
         return_value = {
