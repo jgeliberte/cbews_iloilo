@@ -33,4 +33,4 @@ def fetch(limit):
             'status': False,
             'message': 'Error fetching earthquake data'
         }
-    return jsonify(ret_val)
+    return json.dumps(ret_val)

@@ -81,6 +81,14 @@ def query_moms_alerts(site_id, latest_trigger_ts):
         result = qdb.get_db_dataframe(query)
         
         return result
+    
+def query_od_alerts(site_id, latest_trigger_ts):
+        query = "SELECT * FROM senslopedb.public_alert_on_demand as paod " + \
+            f"WHERE site.site_id = '{site_id}'"
+
+        result = qdb.get_db_dataframe(query)
+        
+        return result
 
 def format_node_details(result):
     node_details = []
@@ -241,49 +249,6 @@ def formulate_moms_tech_info(alert_detail, moms_type_df):
         raise
 
 
-# def get_moms_tech_info(moms_alert_details):
-#     """
-#     Sample
-#     """
-#     m2_triggers_features = []
-#     m3_triggers_features = []
-#     moms_tech_info = {}
-#     moms_parts = []
-
-#     for item in moms_alert_details:
-#         feature = item.moms_instance.feature.feature_type
-#         if item.op_trigger == 2:
-#             m2_triggers_features.append(feature)
-#         elif item.op_trigger == 3:
-#             m3_triggers_features.append(feature)
-
-#     significant = ", ".join(m2_triggers_features)
-#     critical = ", ".join(m3_triggers_features)
-
-#     if m2_triggers_features:
-#         significant_word = "significant"
-#         if len(m2_triggers_features) == 1:
-#             significant_word = significant_word.capitalize()
-#         moms_parts.append(f"{significant_word} ({significant})")
-
-#     if m3_triggers_features:
-#         critical_word = "critical"
-#         if len(m3_triggers_features) == 1:
-#             critical_word = critical_word.capitalize()
-#         moms_parts.append(f"{critical_word} ({critical})")
-
-#     multiple = ""
-#     feature = "feature"
-#     if len(moms_alert_details) > 1:
-#         multiple = "Multiple "
-#         feature = "features"
-
-#     day = " and ".join(moms_parts)
-#     moms_tech_info = f"{multiple}{day} {feature} observed in site"
-#     return moms_tech_info
-
-
-
 def get_moms_tech_info(site_id, latest_trigger_ts):
     try:
         alert_detail = query_moms_alerts(site_id, latest_trigger_ts)
@@ -303,6 +268,20 @@ def get_moms_tech_info(site_id, latest_trigger_ts):
 
                 moms_tech_info["m" + str(index+2)] = f"{prefix} {tech_info} found on site."
         return moms_tech_info
+    
+    except Exception as err:
+        print(err)
+
+
+def get_od_tech_info(site_id, latest_trigger_ts):
+    try:
+        alert_detail = query_od_alerts(site_id, latest_trigger_ts)
+
+        reason = alert_detail["reason"]
+        reporter = alert_detail["reporter"]
+        od_tech_info = f"{reporter} requested on-demand monitoring for the following reason: '{reason}'"
+
+        return od_tech_info
     
     except Exception as err:
         print(err)
@@ -327,5 +306,7 @@ def main(trigger_df):
             technical_info['surficial'] = get_surficial_tech_info(site_id, latest_trigger_ts)
         elif trigger_source == 'moms':
             technical_info['moms'] = get_moms_tech_info(site_id, latest_trigger_ts)
+        elif trigger_source == 'on demand':
+            technical_info['on_demand'] = get_od_tech_info(site_id, latest_trigger_ts)
     
     return technical_info

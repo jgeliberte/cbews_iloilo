@@ -154,3 +154,9 @@ class Helpers():
 
     def dt_to_str(datetime_value):
         return datetime.strftime(datetime_value, "%Y-%m-%d %H:%M:%S")
+
+    def timedelta_to_str(timedelta_value):
+        return str(timedelta_value)
+
+    def str_to_timedelta(string_value):
+        return datetime.strptime(string_value, "%H:%M:%S").time()

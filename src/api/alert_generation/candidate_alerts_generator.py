@@ -5,6 +5,7 @@ from datetime import datetime as dt, timedelta
 from src.api.alert_generation import public_alerts as PA 
 from config import APP_CONFIG
 from src.model.alert_generation import AlertGeneration as AG
+from src.model.public_alert_table import PublicAlertTable as PAT
 from src.model.users import Users
 from src.model.sites import Sites
 from src.api.helpers import Helpers as h
@@ -32,14 +33,14 @@ def prepare_sites_for_routine_release(no_alerts, excluded_indexes_list, invalid_
     if matrix:
         merged_list = no_alerts + invalid_entries
         for index, item in enumerate(merged_list):
-            site_code = entry["site_code"]
-            ts = entry["ts"]
+            site_code = item["site_code"]
+            ts = item["ts"]
             month = h.str_to_dt(ts).month
             site_detail = Sites.get_site_details(filter_value=site_code, site_filter="site_code")
             season = site_detail["season"]
 
             if month in matrix[season - 1]:
-                print("")
+                print("IT IS IN ROUTINE")
                 # TODO: FINISH ROUTINE TASKS. TEST FOR NOW.
 
 
@@ -56,7 +57,7 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
 
             data_ts = site["data_ts"]
             day = site["day"]
-            ts = x["ts"]
+            ts = h.str_to_dt(x["ts"])
 
             if data_ts != ts and day > 0:
                 if ts.hour == 11 and ts.minute == 30:
@@ -67,8 +68,8 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
                         "validity": "extended",
                         "public_alert_level": 0
                     })
-                    x = prepare_candidate_for_release(x)
-                    return_arr.append(x)
+                    x = prepare_candidate_for_release(x, extended_sites)
+                    return_list.append(x)
 
     return return_list, extended_index
 
@@ -79,8 +80,9 @@ def tag_sites_for_lowering(merged_list, no_alerts):
     return_arr = []
     lowering_index = []
     for site in merged_list:
-        if not site["for_release"]:
-            index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
+        index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
+
+        if index != -1:
             x = no_alerts[index]
             lowering_index.append(index)
             data_ts = site["data_ts"]
@@ -262,13 +264,15 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
     current_internal_alert = ""
     current_public_alert_level = 0
     current_entry_source = ""
+    is_ongoing_event = False
 
     # RETRIEVE THE ALERT CHARACTERS (the string after 'A#-') 
     if site_db_alert:
-        current_public_alert_level = site_db_alert["public_alert_level"]
+        is_ongoing_event = True
+        current_public_alert_level = int(site_db_alert["public_alert_level"])
         current_internal_alert = site_db_alert["internal_alert_level"]
         if "-" in current_internal_alert:
-            current_entry_source = internal_alert.split("-", 1)[1]
+            current_entry_source = candidate_ia.split("-", 1)[1]
     candidate_entry_source = candidate_ia
     if "-" in candidate_ia:
         candidate_entry_source = candidate_ia.split("-", 1)[1]
@@ -327,10 +331,15 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
                     internal_alert = public_alert
         if candidate_entry_source:
             internal_alert = f"{public_alert}-{candidate_entry_source}"
-        status = "alert"
+        
+        status = "new"
+        if is_ongoing_event:
+            status = "on-going"
     else:
         internal_alert = "A0"
-        status = "no_alert"
+        status = "routine"
+        if is_ongoing_event:
+            status = "on-going"
 
     entry.update({
         "public_alert": public_alert,
@@ -368,23 +377,12 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
             merged_list[index]["for_release"] = True
 
             data_ts = merged_list[index]["data_ts"]
-            trigger_timestamp = merged_list[index]["trigger_timestamp"]
-            latest_trigger_timestamp = entry["latest_trigger_timestamp"]
+            # trigger_timestamp = merged_list[index]["trigger_timestamp"]
+            # latest_trigger_timestamp = entry["latest_trigger_timestamp"]
             ts = entry["ts"]
 
             if h.str_to_dt(data_ts) == h.str_to_dt(ts):
-                for_updating = True
-
-            # TODO Might fail when testing
-            if h.str_to_dt(trigger_timestamp) >= h.str_to_dt(latest_trigger_timestamp):
-                entry["latest_trigger_timestamp"] = "end"
-                entry["trigger"] = "No new triggers"
-            
-            if is_valid_but_needs_manual:
-                entry["latest_trigger_timestamp"] = "manual"
-                entry["trigger"] = "manual"
-                entry["validity"] = "manual"
-                entry["is_manual"] = "manual"
+                for_updating = False
 
         if for_updating:
             entry = prepare_candidate_for_release(entry, merged_list)
@@ -400,14 +398,28 @@ def prepare_candidate_for_release(candidate, merged_list=None):
     site_id = candidate["site_id"]
     new_data_ts = h.str_to_dt(candidate["ts"])
 
+    # GET THE PREVIOUS EVENT
+    latest_site_event = PAT.fetch_latest_event(PAT, site_id)
+    status = latest_site_event["status"]
+    previous_event_id = latest_site_event["event_id"]
+    candidate["previous_event_id"] = previous_event_id
+
+    new_status = status
+    if status in ["finished", "routine"]:
+        new_status = "new"
+
+    candidate["status"] = new_status
+
     ########################
     # CHECK IF NEW RELEASE $
     ########################
     # db_alert = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site_code), None)
     db_alert = next(filter(lambda x: x['site_code'] == site_code, merged_list), None)
     is_new_release = True
+    current_public_alert = 0
     if db_alert:
         latest_saved_data_ts = h.str_to_dt(db_alert["data_ts"])
+        current_public_alert = db_alert["public_alert_level"]
         is_ts_already_released = new_data_ts <= latest_saved_data_ts
         if is_ts_already_released:
             is_new_release = False
@@ -418,12 +430,15 @@ def prepare_candidate_for_release(candidate, merged_list=None):
     scheduled_release_time = h.round_to_nearest_release_time(new_data_ts)
     start_ts = scheduled_release_time - timedelta(minutes=30)
     # NOTE: allows 8, 12, 16, 20, 23, 3 timestamp release
+    is_higher_alert = current_public_alert < candidate["public_alert_level"]
+    h.var_checker("CHECKING RELEASE TIME", "", True)
     is_release_time = False
-    if start_ts < new_data_ts <= scheduled_release_time:
+    if start_ts <= new_data_ts < scheduled_release_time:
         is_release_time = True
     else:
         if is_new_release:
-            is_release_time = True
+            if is_higher_alert:
+                is_release_time = True
 
     ###########################################
     # PREPARE TRIGGERS FOR RELEASE.           #
@@ -519,6 +534,7 @@ def process_candidate_alerts(generated_alerts, db_alerts):
     candidate_alerts_list.extend(return_list)
     
     return_list = tag_sites_for_lowering(merged_list, no_alerts)
+    # TODO: Somethings wrong with the lowering indexes list
     lowering_return, lowering_indexes_list = return_list
     candidate_alerts_list.extend(lowering_return)
 
