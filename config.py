@@ -30,7 +30,12 @@ APP_CONFIG = {
     "development": DevelopmentConfig,
     "production": ProductionConfig,
     "url": "http://localhost:3000",
-    "MARIRONG_DIR": "/var/www/html/CBEWSL/MARIRONG",
+    "MARIRONG_DIR": "/home/jgeliberte/codes/cbews-l-mar-fe/src/client-cbewsl/MARIRONG",
+    "UMINGAN_DIR": "/home/jgeliberte/codes/cbews-l-mar-fe/src/client-cbewsl/UMINGAN",
     "CANDIDATE_DIR": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen",
-    "public_alert_file": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen/PublicAlertRefDB.json"
+    "public_alert_file": "/home/louie-cbews/CODES/cbews_iloilo/Documents/monitoringoutput/alertgen/PublicAlertRefDB.json",
+    "site_code": {
+        "29": "MARIRONG_DIR",
+        "50": "UMINGAN_DIR"
+    }
 }
