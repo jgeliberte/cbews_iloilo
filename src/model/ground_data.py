@@ -94,7 +94,7 @@ class GroundData():
                 (site_id, mo_id) = surficial_data.values()
                 query = f'DELETE FROM marker_observations WHERE mo_id="{mo_id}" AND site_id="{site_id}'
             else:
-                (ts, weather, observer, marker_value, site_id) = surficial_data.values()
+                (ts, weather, observer, site_id) = surficial_data.values()
                 query = f'DELETE FROM marker_observations WHERE ts="{ts}" ' \
                         f'AND weather="{weather}" AND observer_name="{observer}" AND site_id = "{site_id}" ' \
                         'AND IFNULL(mo_id, 0) = LAST_INSERT_ID(mo_id);'

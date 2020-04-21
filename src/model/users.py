@@ -90,14 +90,12 @@ class Users():
 
 	def create_user_mobile(data):
 		gsm_id, mobile_status, priority, sim_num, user_id = data.values()
-		print("test")
 		query = f"INSERT INTO user_mobile VALUES (0, {user_id}, {sim_num}, {priority}, {mobile_status}, {gsm_id})"
 		mobile_id = DB.db_modify(query,'comms_db', True)
 		return mobile_id
 	
 	def create_user_profile(user_prof_data):
 		birthdate, email, site_code, site_id, user_id = user_prof_data.values()
-		print("birthdate", birthdate)
 		query = f"INSERT INTO user_profile VALUES (0, '{user_id}','{site_id}', '{birthdate}', '{email}')"
 		profile_id = DB.db_modify(query,'commons_db', True)
 		return profile_id
@@ -117,9 +115,5 @@ class Users():
 
 	def fetch_user(user_id):
 		query = f"SELECT first_name, last_name FROM commons_db.users WHERE user_id = {user_id}"
-		print("")
-		print("query", query)
-		
 		user = DB.db_read(query, 'commons_db')
-		print(user)
 		return user
