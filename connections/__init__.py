@@ -78,6 +78,9 @@ def create_app():
 
     from src.api.ground_data.on_demand import ON_DEMAND_BLUEPRINT
     app.register_blueprint(ON_DEMAND_BLUEPRINT, url_prefix="/api")
+
+    from src.api.risk_assessment.hazard_maps import HAZARD_MAPS_BLUEPRINT
+    app.register_blueprint(HAZARD_MAPS_BLUEPRINT, url_prefix="/api")
     
     from src.api.test import TEST_BLUEPRINT
     app.register_blueprint(TEST_BLUEPRINT, url_prefix="/test")
