@@ -28,20 +28,47 @@ def get_haphazard_moms_data_source(tech_info):
     moms_data_source = tech_info[start:end]
     return moms_data_source
 
+def get_haphazard_sensor_data_source(tech_info):
+    start = 0
+    end = tech_info.find(")")
+    sensor_data_source = tech_info[start:end]
+    return sensor_data_source
+
 def prepare_triggers(row):
     trigger_source = row["trigger_source"]
     info = ""
-    if trigger_source == "moms":
+    h.var_checker("trigger_source", trigger_source, True)
+
+    data_source = "UnDefined"
+    if trigger_source == "rainfall":
+        info = row["info"]
+        data_source = get_haphazard_rain_data_source(row["info"])
+    elif trigger_source == "moms":
         try:
             info = row["info"]["m3"]
         except KeyError:
             info = row["info"]["m2"]
+            h.var_checker("info", info, True)
         data_source = get_haphazard_moms_data_source(info)
-    elif trigger_source == "rainfall":
-        info = row["info"]
-        data_source = get_haphazard_rain_data_source(row["info"])
+    elif trigger_source == "subsurface":
+        try:
+            info = row["info"]["L3"]
+        except KeyError:
+            info = row["info"]["L2"]
+            h.var_checker("info", info, True)
+        data_source = get_haphazard_sensor_data_source(info)
+    elif trigger_source == "surficial":
+        try:
+            info = row["info"]["l3"]
+        except KeyError:
+            info = row["info"]["l2"]
+            h.var_checker("info", info, True)
+        data_source = "dummy"
+
+    h.var_checker("data_source", data_source, True)
 
     row.update({
+        "info": info,
         "date_time": row["timestamp"],
         "trigger": trigger_source.capitalize(),
         "data_source": data_source,
@@ -72,31 +99,18 @@ def get_mar_alert_validation_data():
             release_triggers = mar_data["release_triggers"]
 
             new_rel_trigs = list(map(prepare_triggers, release_triggers))
-        
-            data = {
-                "public_alert_level": mar_data["public_alert_level"],
-                "public_alert": mar_data["public_alert"],
+
+            mar_data.update({
                 "release_triggers": new_rel_trigs, 
-                "data_ts": mar_data["data_ts"],
-                "is_new_release": mar_data["is_new_release"],
-                "is_release_time": mar_data["is_release_time"],
-                "validity":  mar_data["validity"],
-                "candidate_data": mar_data,
                 "as_of_ts": as_of_ts,
-                "all_validated": True,
-                "site_code": mar_data["site_code"],
-                "site_id": mar_data["site_id"],
-                "release_time": mar_data["release_time"],
-                "data_ts": mar_data["data_ts"],
-                "status": mar_data["status"],
-                "internal_alert_level": mar_data["internal_alert"],
-                "comments": "",
-                "bulletin_number": PAT.fetch_site_bulletin_number(PAT, site_id=29),
-                "current_event_id": PAT.fetch_latest_event(PAT,site_id=29, return_col="event_id")
-            }
+                # "all_validated": True
+                "release_time": h.dt_to_str(dt.now()),
+                "comments": "No Comment",
+                "bulletin_number": PAT.fetch_site_bulletin_number(PAT, site_id=29)
+            })
 
             response = {
-                "data": data,
+                "data": mar_data,
                 "status": 200,
                 "ok": True
             }
@@ -105,7 +119,7 @@ def get_mar_alert_validation_data():
                 "data": {
                     "as_of_ts": as_of_ts,
                     "public_alert_level": 0,
-                    "candidate_data": {"status": "no_alert"}
+                    "status": "no_alert"
                 },
                 "status": 200,
                 "ok": True
@@ -203,7 +217,7 @@ def format_release_triggers(payload, process_one=False):
         list_to_process = [payload]
 
     for trig in list_to_process:
-        (trigger_id, release_id, trigger_type, timestamp, info) = trig.values()
+        (trigger_id, release_id, trigger_type, timestamp, info) = trig
         trigger_source = AG.get_internal_alert_symbol_row(trigger_type, return_col="trigger_source")
         alert_level = AG.get_internal_alert_symbol_row(trigger_type, return_col="alert_level")
         release_trig_list.append({
@@ -231,21 +245,25 @@ def get_unique_trigger_per_type(trigger_list):
     new_trigger_list = []
     unique_triggers_set = set({})
     for trigger in trigger_list:
-        (trigger_id, release_id, trigger_type, timestamp, info) = trigger
+        h.var_checker("uniquer trigger", trigger, True)
+        (trigger_id, release_id, trigger_type, timestamp, info) = trigger.values()
         trigger_source = AG.get_internal_alert_symbol_row(trigger_type, return_col="trigger_source")
+        h.var_checker("uniquer trigger_source", trigger_source, True)
         alert_level = AG.get_internal_alert_symbol_row(trigger_type, return_col="alert_level")
+        h.var_checker("uniquer alert_level", alert_level, True)
 
-        if not trigger_type in unique_triggers_set:
-            unique_triggers_set.add(trigger_type)
-            new_trigger_list.append({
-                "trigger_id": trigger_id,
-                "release_id": release_id,
-                "trigger_type": trigger_type,
-                "trigger_source": trigger_source,
-                "trigger_alert_level": alert_level,
-                "timestamp": dt.strftime(timestamp, "%Y-%m-%d %H:%M:%S"), 
-                "info": info
-            })
+        if trigger_source:
+            if not trigger_type in unique_triggers_set:
+                unique_triggers_set.add(trigger_type)
+                new_trigger_list.append({
+                    "trigger_id": trigger_id,
+                    "release_id": release_id,
+                    "trigger_type": trigger_type,
+                    "trigger_source": trigger_source,
+                    "trigger_alert_level": alert_level,
+                    "timestamp": timestamp, 
+                    "info": info
+                })
 
     return new_trigger_list
 
@@ -311,6 +329,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                 event_data["validity"] = dt.strftime(validity, "%Y-%m-%d %H:%M:%S")
                 event_data["reporter"] = reporter
                 event_data["event_id"] = event_id
+                event_data["event_status"] = status
 
                 if internal_alert[0] == "A":
                     # Probably A0, A1-..., A2-..., A3-...
@@ -346,7 +365,9 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                 all_event_triggers = AG.get_event_triggers(
                     event_id=event_id
                 )
+                h.var_checker("all_event_triggers", all_event_triggers, True)
                 event_data["latest_event_triggers"] = get_unique_trigger_per_type(all_event_triggers)
+                h.var_checker("latest_event_triggers", event_data["latest_event_triggers"], True)
 
                 if run_ts <= validity:
                     active_events_dict["latest"].append(event_data)
@@ -375,6 +396,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                         print("Latest Event")
                         active_events_dict["latest"].append(event_data)
                     elif day > 0 and day <= extended_monitoring_days:
+                        result = PAT.update_public_alert_event(PAT, {"status": "extended"}, {"event_id": event_id})
                         event_data["day"] = day
                         print(f"It is Day {day} of extended monitoring")
                         active_events_dict["extended"].append(event_data)
@@ -469,7 +491,7 @@ def save_triggers(ewi_data, event_id, release_id, current_validity):
     if current_validity < h.str_to_dt(ewi_data["validity"]):
         validity = h.str_to_dt(ewi_data["validity"])
     
-    return pat_trigger_id, validity
+    return latest_trigger_id, validity
 
 
 def adjust_bulletin_number(site_id):
@@ -499,9 +521,9 @@ def insert_ewi(internal_ewi_data=None):
 
     try:
         release_id = None
-        validity = None
         update_event_container = {}
         # For routine sites
+        event_validity = ""
         release_list = []
 
         if internal_ewi_data:
@@ -509,11 +531,13 @@ def insert_ewi(internal_ewi_data=None):
         else:
             ewi_data = request.get_json()
 
+        h.var_checker("FUCKING ewi_data", ewi_data)
+
         # Extract main necessary data
         site_id = ewi_data["site_id"]
         site_code = ewi_data["site_code"]
         data_ts = ewi_data["data_ts"]
-        validity = ewi_data["validity"]
+        ewi_validity = h.str_to_dt(ewi_data["validity"])
 
         # TODO: Find a way to get the two ff data
         reporter_id_mt = 1
@@ -528,10 +552,11 @@ def insert_ewi(internal_ewi_data=None):
 
         status = ewi_data["status"]
         if status == "routine":
+            h.var_checker("FUCKING status", status)
             for routine_entry in ewi_data["routine_list"]:
                 event_id = PAT.insert_public_alert_event(
                     site_id=site_id, event_start=data_ts, latest_rel_id=None,
-                    latest_trig_id=None, validity=validity, status=status
+                    latest_trig_id=None, validity=None, status=status
                 )
 
                 release_dict["event_id"] = event_id
@@ -541,14 +566,15 @@ def insert_ewi(internal_ewi_data=None):
                 release_list.append(release_dict)
         
         else:
-            release_dict["internal_alert_level"] = ewi_data["internal_alert_level"]
+            release_dict["internal_alert_level"] = ewi_data["internal_alert"]
             release_dict["bulletin_number"] = ewi_data["bulletin_number"]
 
+            h.var_checker("FUCKING status", status)
+
             if status == "new":
-                status = "on-going"
                 event_id = PAT.insert_public_alert_event(PAT,
                     site_id=site_id, event_start=data_ts, latest_rel_id=None,
-                    latest_trig_id=None, validity=validity, status=status
+                    latest_trig_id=None, validity=h.dt_to_str(ewi_validity), status="on-going"
                 )
                 release_dict["event_id"] = event_id
                 try:
@@ -562,11 +588,11 @@ def insert_ewi(internal_ewi_data=None):
                 except KeyError:
                     pass
                     
-            else:
-                event_id = ewi_data["current_event_id"]
+            elif status in ["on-going", "extended", "invalid", "finished"]:
+                event_id = ewi_data["event_id"]
                 release_dict["event_id"] = event_id
 
-                validity = AlertGeneration.get_public_alert_event_validity(event_id)
+                event_validity = h.str_to_dt(AlertGeneration.get_public_alert_event_validity(event_id))
 
                 if status in ["extended", "invalid", "finished"]:
                     update_event_container["status"] = status
@@ -574,6 +600,7 @@ def insert_ewi(internal_ewi_data=None):
             release_list.append(release_dict)
         
         for release_dict in release_list:
+            h.var_checker("release_dict", release_dict, True)
             release_id = PAT.insert_public_alert_release(
                 PAT,
                 event_id=release_dict["event_id"],
@@ -586,19 +613,28 @@ def insert_ewi(internal_ewi_data=None):
                 reporter_id_ct=release_dict["reporter_id_ct"]
             )
             update_event_container["latest_release_id"] = release_id
+            h.var_checker("release_dict update_event_container", update_event_container, True)
+            h.var_checker("release_dict status", status, True)
 
             if status == "routine":
                 event_id = release_dict["event_id"]
             elif status in ["new", "on-going"]:
                 if "extend_ND" in ewi_data or "extend_rain_x" in ewi_data:
-                    update_event_container["validity"] = h.dt_to_str(h.str_to_dt(validity) + timedelta(hours=4))
+                    h.var_checker("event_validity", event_validity)
+                    update_event_container["validity"] = h.dt_to_str(h.str_to_dt(event_validity) + timedelta(hours=4))
                 else:
-                    latest_trigger_id, validity = save_triggers(ewi_data, event_id, release_id, validity)
-                    update_event_container.update({
-                        "latest_trigger_id": int(latest_trigger_id),
-                        "validity": validity
-                    })
+                    # NOTE: Ff line trial only
+                    trigger_new_validity = ewi_validity
+                    if ewi_data["release_triggers"]:
+                        latest_trigger_id, trigger_new_validity = save_triggers(ewi_data, event_id, release_id, event_validity)
+                        update_event_container.update({ "latest_trigger_id": int(latest_trigger_id) })
+
+                    # NOTE: Ff line trial only
+                    if ewi_validity < trigger_new_validity:
+                        new_validity = trigger_new_validity
+                        update_event_container.update({ "validity": h.dt_to_str(new_validity) })
             
+            h.var_checker("update_event_container", update_event_container, True)
             # TODO: UDPATE EVENT HERE
             event_id = PAT.update_public_alert_event(PAT, update_event_container, {
                 "event_id": event_id

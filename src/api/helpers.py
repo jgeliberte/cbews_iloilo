@@ -127,7 +127,7 @@ class Helpers():
         return date_time
 
 
-    def var_checker(var_name, var, have_spaces=False):
+    def var_checker(var_name, var, have_spaces=True):
         """
         A function used to check variable value including
         title and indentation and spacing for faster checking
@@ -150,10 +150,16 @@ class Helpers():
             printer.pprint(var)
 
     def str_to_dt(string_value):
-        return datetime.strptime(string_value, "%Y-%m-%d %H:%M:%S")
+        if isinstance(string_value, datetime):
+            return string_value
+        else:
+            return datetime.strptime(string_value, "%Y-%m-%d %H:%M:%S")
 
     def dt_to_str(datetime_value):
-        return datetime.strftime(datetime_value, "%Y-%m-%d %H:%M:%S")
+        if isinstance(datetime_value, str):
+            return datetime_value
+        else:
+            return datetime.strftime(datetime_value, "%Y-%m-%d %H:%M:%S")
 
     def timedelta_to_str(timedelta_value):
         return str(timedelta_value)

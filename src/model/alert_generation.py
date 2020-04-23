@@ -283,7 +283,33 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        return result
+        temp_list = []
+        if result:
+            for trig in result:
+                temp_dict = None
+                if complete:
+                    temp_dict = {
+                        "trigger_id": trig[0],
+                        "event_id": trig[1],
+                        "release_id": trig[2],
+                        "trigger_type": trig[3],
+                        "timestamp": h.dt_to_str(trig[4]),
+                        "info": trig[5]
+                    }
+                else:
+                    temp_dict = {
+                        "trigger_id": trig[0],
+                        "release_id": trig[1],
+                        "trigger_type": trig[2],
+                        "timestamp": h.dt_to_str(trig[3]),
+                        "info": trig[4]
+                    }
+                temp_list.append(temp_dict)
+
+        h.var_checker("temp_list", temp_list, True)
+
+        return temp_list
+
 
     def get_release_triggers(release_id, sort_order="desc", return_count=None, complete=False):
         """
@@ -433,18 +459,38 @@ class AlertGeneration():
                 "trigger_hierarchies th USING (source_id)"
 
         if trigger_type:
-            query = f"{query} WHERE ias.alert_symbol = '{trigger_type}'"
+            query = f"{query} WHERE BINARY ias.alert_symbol = '{trigger_type}'"
         else:
             if trigger_symbol:
-                query = f"{query} WHERE ots.alert_symbol = '{trigger_symbol}'"
+                query = f"{query} WHERE BINARY ots.alert_symbol = '{trigger_symbol}'"
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        if return_col:
-            result = result[0][0]
 
-        return result
+
+        h.var_checker("1get_internal_alert_symbol_row query", query, True)
+        return_data = None
+        if return_col:
+            h.var_checker("1get_internal_alert_symbol_row result", result, True)
+            if result:
+                return_data = result[0][0]
+        else:
+            h.var_checker("2get_internal_alert_symbol_row result", result, True)
+            if result:
+                result = result[0]
+                return_data = {
+                    "internal_sym_id": result[0], 
+                    "trigger_sym_id": result[1], 
+                    "ias_symbol": result[2], 
+                    "ots_symbol": result[3], 
+                    "alert_description": result[4], 
+                    "alert_level": result[5], 
+                    "trigger_source": result[6]
+                }
+
+        return return_data
+
 
     def get_operational_trigger_symbol(trigger_source, alert_level, return_col=None):
         """
