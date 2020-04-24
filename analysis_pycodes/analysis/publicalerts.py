@@ -9,7 +9,7 @@ import querydb as qdb
 import techinfomaker as tech_info_maker
 
 
-def var_checker(var_name, var, have_spaces=False):
+def var_checker(var_name, var, have_spaces=True):
     """
     A function used to check variable value including
     title and indentation and spacing for faster checking
@@ -712,6 +712,7 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
 
     # PUBLIC ALERT
     # check if end of validity: lower alert if with data and not rain75
+    is_within_alert_extension = False
     if public_alert > 0:
         is_release_time_run = end.time() in [time(3, 30), time(7, 30),
                         time(11, 30), time(15, 30), time(19, 30),
@@ -720,14 +721,19 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
         is_not_yet_write_time = not (is_release_time_run and is_45_minute_beyond)
         is_within_alert_extension = validity + timedelta(3) > end + timedelta(hours=0.5)
         has_no_ground_data = ground_alert == -1
+
+        var_checker("is_not_yet_write_time", is_not_yet_write_time)
+        var_checker("has_no_ground_data", has_no_ground_data)
+        var_checker("is_within_alert_extension", is_within_alert_extension)
         
         # check if end of validity: lower alert if with data and not rain75
         if validity > end + timedelta(hours=0.5):
             pass
         elif rain75_id in internal_df['trigger_sym_id'].values \
                 or is_within_alert_extension and has_no_ground_data \
-                    or is_not_yet_write_time \
-                        or is_within_alert_extension and has_unresolved_moms:
+                    or is_not_yet_write_time:
+                    # or is_not_yet_write_time \
+                    #     or is_within_alert_extension and has_unresolved_moms:
             validity = release_time(end)
 
             if is_release_time_run:
@@ -792,7 +798,9 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
                     'subsurface': [subsurface], 'surficial': [surficial],
                     'rainfall': [rainfall], 'moms': [moms_alert],
                     'triggers': [triggers], 'tech_info': [tech_info],
-                    'has_no_ground_data': [has_no_ground_data]})
+                    'has_no_ground_data': [has_no_ground_data],
+                    'is_within_alert_extension': [is_within_alert_extension],
+                    'has_unresolved_moms': [has_unresolved_moms]})
 
     # writes public alert to database
     pub_sym_id =  public_symbols[public_symbols.alert_level == \

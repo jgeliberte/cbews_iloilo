@@ -213,6 +213,9 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
+        if result:
+            result = result[0][0]
+
         return result
 
     def get_event_releases(event_id, sort_order="desc", return_count=None, complete=False):
@@ -224,7 +227,7 @@ class AlertGeneration():
             select_option = "*"
 
         query = f"SELECT {select_option} FROM public_alert_release \
-                INNER JOIN public_alert_event using (event_id)"
+                WHERE event_id = {event_id} "
 
         order = "ASC" if sort_order in ["asc", "ASC"] else "DESC"
         query = f"{query} ORDER BY release_id {order}"
@@ -235,7 +238,32 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        return result
+        return_data = None
+        if result:
+            result = result[0]
+            if complete:
+                return_data = {
+                    "release_id": result[0], 
+                    "event_id": result[1], 
+                    "data_timestamp": h.dt_to_str(result[2]), 
+                    "internal_alert_level": result[3], 
+                    "release_time": h.timedelta_to_str(result[4]),
+                    "comments": result[5],
+                    "bulletin_number": result[6],
+                    "reporter_id_mt": result[7],
+                    "reporter_id_ct": result[8]
+                }
+            else:
+                return_data = {
+                    "release_id": result[0], 
+                    "data_timestamp": h.dt_to_str(result[1]), 
+                    "internal_alert_level": result[2], 
+                    "release_time": h.timedelta_to_str(result[3]), 
+                    "reporter_id_mt": result[4]
+                }
+
+        return return_data
+
 
     def get_event_triggers(event_id, sort_order="desc", return_count=None, complete=False):
         """
@@ -255,7 +283,31 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-        return result
+        temp_list = []
+        if result:
+            for trig in result:
+                temp_dict = None
+                if complete:
+                    temp_dict = {
+                        "trigger_id": trig[0],
+                        "event_id": trig[1],
+                        "release_id": trig[2],
+                        "trigger_type": trig[3],
+                        "timestamp": h.dt_to_str(trig[4]),
+                        "info": trig[5]
+                    }
+                else:
+                    temp_dict = {
+                        "trigger_id": trig[0],
+                        "release_id": trig[1],
+                        "trigger_type": trig[2],
+                        "timestamp": h.dt_to_str(trig[3]),
+                        "info": trig[4]
+                    }
+                temp_list.append(temp_dict)
+
+        return temp_list
+
 
     def get_release_triggers(release_id, sort_order="desc", return_count=None, complete=False):
         """
@@ -299,10 +351,20 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
+        return_data = None
         if return_col:
-            result = result[0][0]
+            return_data = result[0][0]
+        else:
+            temp = result[0]
+            return_data = {
+                "pub_sym_id": temp[0],
+                "alert_symbol": temp[1],
+                "alert_level": temp[2],
+                "alert_type": temp[3],
+                "recommended_response": temp[4]
+            }
 
-        return result
+        return return_data
 
     def get_ias_table():
         """
@@ -393,18 +455,33 @@ class AlertGeneration():
                 "trigger_hierarchies th USING (source_id)"
 
         if trigger_type:
-            query = f"{query} WHERE ias.alert_symbol = '{trigger_type}'"
+            query = f"{query} WHERE BINARY ias.alert_symbol = '{trigger_type}'"
         else:
             if trigger_symbol:
-                query = f"{query} WHERE ots.alert_symbol = '{trigger_symbol}'"
+                query = f"{query} WHERE BINARY ots.alert_symbol = '{trigger_symbol}'"
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
+        return_data = None
         if return_col:
-            result = result[0][0]
+            if result:
+                return_data = result[0][0]
+        else:
+            if result:
+                result = result[0]
+                return_data = {
+                    "internal_sym_id": result[0], 
+                    "trigger_sym_id": result[1], 
+                    "ias_symbol": result[2], 
+                    "ots_symbol": result[3], 
+                    "alert_description": result[4], 
+                    "alert_level": result[5], 
+                    "trigger_source": result[6]
+                }
 
-        return result
+        return return_data
+
 
     def get_operational_trigger_symbol(trigger_source, alert_level, return_col=None):
         """

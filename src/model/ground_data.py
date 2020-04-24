@@ -224,8 +224,7 @@ class GroundData():
 
 
     def get_latest_od_events(site_id):
-        query = "SELECT id, trigger_id, paod.ts, is_lgu, is_llmc, reason FROM public_alert_on_demand as paod " 
-        query += "INNER JOIN operational_triggers USING (trigger_id) "
+        query = "SELECT id, ts, site_id, reason, reporter, alert_level FROM public_alert_on_demand " 
         query += f"WHERE site_id = {site_id} " 
         query += "ORDER BY ts DESC"
         print(query)
@@ -238,22 +237,22 @@ class GroundData():
             for row in od_data:
                 return_list.append({
                     "id": row[0],
-                    "trigger_id": row[1],
-                    "ts": Helpers.dt_to_str(row[2]),
-                    "is_lgu": row[3],
-                    "is_llmc": row[4],
-                    "reason": row[5]
+                    "ts": Helpers.dt_to_str(row[1]),
+                    "site_id": row[2],
+                    "reason": row[3],
+                    "reporter": row[4],
+                    "alert_level": row[5]
                 })
 
         return return_list
 
 
-    def insert_on_demand_alert(trigger_id, ts, is_lgu, is_llmc, reason):
+    def insert_on_demand_alert(ts, site_id, reason, reporter, alert_level):
         """
         """
         try:
-            query = "INSERT INTO public_alert_on_demand (trigger_id, ts, is_lgu, is_llmc, reason) " \
-                    f"VALUES ({trigger_id}, '{ts}', is_lgu, is_llmc, '{reason}')"
+            query = "INSERT INTO public_alert_on_demand (ts, site_id, reason, reporter, alert_level) " \
+                    f"VALUES ('{ts}', {site_id}, '{reason}', '{reporter}', {alert_level})"
             od_id = DB.db_modify(query, "senslopedb", last_insert_id=True)
             result = { "status": True, "data": od_id }
         except Exception as err:

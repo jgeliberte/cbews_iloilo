@@ -28,38 +28,37 @@ def fetch(site_id):
 def add():
     try:
         print(request.get_json())
-        (is_lgu, is_llmc, reason, site_id, ts) = request.get_json().values()
+        (alert_level, reason, reporter, site_id, ts) = request.get_json().values()
 
-        trigger_sym_id = AlertGen.get_operational_trigger_symbol(
-                                    trigger_source='on demand',
-                                    alert_level=1,
-                                    return_col="trigger_sym_id")
+        # trigger_sym_id = AlertGen.get_operational_trigger_symbol(
+        #                             trigger_source='on demand',
+        #                             alert_level=1,
+        #                             return_col="trigger_sym_id")
 
-        op_trig_data_dict = AlertGen.fetch_recent_operational_trigger(
-            AlertGen,
-            site_id=site_id,
-            trig_sym_id=trigger_sym_id
-        )
-        H.var_checker("op_trig_data_dict", op_trig_data_dict, True)
+        # op_trig_data_dict = AlertGen.fetch_recent_operational_trigger(
+        #     AlertGen,
+        #     site_id=site_id,
+        #     trig_sym_id=trigger_sym_id
+        # )
+        # H.var_checker("op_trig_data_dict", op_trig_data_dict, True)
 
-        # If nothing exists in database:
-        if not op_trig_data_dict:
-            trigger_id = AlertGen.insert_operational_trigger(
-                site_id=site_id,
-                trig_sym_id=trigger_sym_id,
-                ts_updated=ts
-            )
-        # Else update especially ts in database:
-        else:
-            trigger_id = op_trig_data_dict["trigger_id"]
-            result = AlertGen.update_operational_trigger(
-                op_trig_id=trigger_id,
-                trig_sym_id=trigger_sym_id,
-                ts_updated=ts
-            )
+        # # If nothing exists in database:
+        # if not op_trig_data_dict:
+        #     trigger_id = AlertGen.insert_operational_trigger(
+        #         site_id=site_id,
+        #         trig_sym_id=trigger_sym_id,
+        #         ts_updated=ts
+        #     )
+        # # Else update especially ts in database:
+        # else:
+        #     trigger_id = op_trig_data_dict["trigger_id"]
+        #     result = AlertGen.update_operational_trigger(
+        #         op_trig_id=trigger_id,
+        #         trig_sym_id=trigger_sym_id,
+        #         ts_updated=ts
+        #     )
 
-        H.var_checker("trigger_id", trigger_id, True)
-        result = GroundData.insert_on_demand_alert(trigger_id, ts, is_lgu, is_llmc, reason)
+        result = GroundData.insert_on_demand_alert(ts, site_id, reason, reporter, alert_level)
 
         if result['status']:
             od_data_return = {
