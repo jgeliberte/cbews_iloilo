@@ -488,12 +488,15 @@ def save_triggers(ewi_data, event_id, release_id):
     release_triggers = ewi_data["release_triggers"]
     latest_trigger_id = None
     for trigger in release_triggers:
-        trigger_type = trigger["trigger_type"]
-        timestamp = trigger["timestamp"]
-        info = trigger["info"]
-        pat_trigger_id = PAT.insert_public_alert_trigger(PAT, event_id, release_id, trigger_type, timestamp, info)
-        latest_trigger_id = pat_trigger_id
-        print(f"Public alert trigger written with ID {pat_trigger_id}")
+        if trigger["is_invalid"] == False:
+            trigger_type = trigger["trigger_type"]
+            timestamp = trigger["timestamp"]
+            info = trigger["info"]
+            pat_trigger_id = PAT.insert_public_alert_trigger(PAT, event_id, release_id, trigger_type, timestamp, info)
+            latest_trigger_id = pat_trigger_id
+            print(f"Public alert trigger written with ID {pat_trigger_id}")
+        else:
+            print("invalid trigger... skipping.")
     
     return latest_trigger_id
 
