@@ -3,7 +3,7 @@ from pprint import pprint
 import os
 import pandas as pd
 import sys
-# from publicalerts_copy import release_time, var_checker, get_moms_feature_types
+from publicalerts_copy import release_time, var_checker, get_moms_feature_types
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import querydb as qdb

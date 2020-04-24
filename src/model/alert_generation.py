@@ -306,8 +306,6 @@ class AlertGeneration():
                     }
                 temp_list.append(temp_dict)
 
-        h.var_checker("temp_list", temp_list, True)
-
         return temp_list
 
 
@@ -325,8 +323,6 @@ class AlertGeneration():
         query = f"{query} ORDER BY timestamp {order}"
 
         query = f"{query} LIMIT {return_count}" if return_count else query
-
-        h.var_checker("query", query, True)
 
         schema = "senslopedb"
         result = DB.db_read(query, schema)
@@ -467,16 +463,11 @@ class AlertGeneration():
         schema = "senslopedb"
         result = DB.db_read(query, schema)
 
-
-
-        h.var_checker("1get_internal_alert_symbol_row query", query, True)
         return_data = None
         if return_col:
-            h.var_checker("1get_internal_alert_symbol_row result", result, True)
             if result:
                 return_data = result[0][0]
         else:
-            h.var_checker("2get_internal_alert_symbol_row result", result, True)
             if result:
                 result = result[0]
                 return_data = {

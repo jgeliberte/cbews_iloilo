@@ -81,7 +81,7 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
         
         # If site_code is already in active events:
         if site_db_alert:
-            site_db_pub_al_lvl = site_db_alert["public_alert_level"]
+            site_db_pub_al_lvl = int(site_db_alert["public_alert_level"])
             site_db_data_ts = h.str_to_dt(site_db_alert["data_ts"])
             site_db_validity = h.str_to_dt(site_db_alert["validity"])
             candidate["previous_validity"] = h.dt_to_str(site_db_validity)
@@ -134,7 +134,7 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
         scheduled_release_time = h.round_to_nearest_release_time(candidate_ts)
         target_data_ts = scheduled_release_time - timedelta(minutes=30)
 
-        is_higher_alert = site_db_pub_al_lvl < candidate["public_alert_level"]
+        is_higher_alert = site_db_pub_al_lvl < int(candidate["public_alert_level"])
         is_release_time = False
 
         # NOTE: CODE THAT ALLOWS RELEASE BEYOND :30
@@ -158,13 +158,12 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
                 else:
                     internal += "Rx"
 
-        # if candidate["has_no_ground_data"]:
-        #     candidate["extend_ND"] = True
+        if candidate["has_no_ground_data"] and candidate["public_alert_level"] == 1 and site_db_alert:
+            candidate["extend_ND"] = True
 
-        ################
-        # CHECK FOR RX #
-        ################
-
+        # NOTE: LOUIE Study more on this code
+        if candidate["status"] == "lowering":
+            is_release_time = True
 
         # ADD MISSING DATA
         candidate.update({
@@ -222,17 +221,22 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
             x = no_alerts[index]
             extended_index.append(index)
 
-            data_ts = site["data_ts"]
+            data_ts = h.str_to_dt(site["data_ts"])
             day = site["day"]
             ts = h.str_to_dt(x["ts"])
 
             if data_ts != ts and day > 0:
                 if ts.hour == 11 and ts.minute == 30:
+                    # x.update({
+                    #     "status": "extended",
+                    #     "latest_trigger_timestamp": "extended",
+                    #     "trigger": "extended",
+                    #     "validity": "extended",
+                    #     "public_alert_level": 0
+                    # })
                     x.update({
                         "status": "extended",
-                        "latest_trigger_timestamp": "extended",
-                        "trigger": "extended",
-                        "validity": "extended",
+                        "day": day,
                         "public_alert_level": 0
                     })
                     # x = prepare_candidate_for_release(x, extended_sites)
@@ -258,14 +262,18 @@ def tag_sites_for_lowering(merged_list, no_alerts):
             internal_alert_level = site["internal_alert_level"]
 
             if data_ts != x["ts"] and internal_alert_level not in ["A0", "ND"]:
+                # x.update({
+                #     "status": "lowering",
+                #     "latest_trigger_timestamp": None,
+                #     "trigger": [],
+                #     "validity": None,
+                #     "public_alert_level": 0
+                # })
                 x.update({
                     "status": "lowering",
-                    "latest_trigger_timestamp": None,
                     "trigger": [],
-                    "validity": None,
                     "public_alert_level": 0
                 })
-
                 # x = prepare_candidate_for_release(x, merged_list)
                 return_arr.append(x)
     return [return_arr, lowering_index]

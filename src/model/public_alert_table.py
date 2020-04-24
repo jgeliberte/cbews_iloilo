@@ -46,8 +46,6 @@ class PublicAlertTable():
             query += "(site_id, event_start, latest_release_id, latest_trigger_id, validity, status) "
             query += f"VALUES ({site_id}, '{event_start}', null, null, '{validity}', '{status}')"
 
-            H.var_checker("query", query, True)
-
             schema = "senslopedb"
             event_id = DB.db_modify(query, schema, True)
         except Exception as err:
@@ -143,7 +141,6 @@ class PublicAlertTable():
         """
         query = "SELECT bulletin_number FROM bulletin_tracker "
         query += f"WHERE site_id = {site_id}"
-        H.var_checker("query", query, True)
         schema = "senslopedb"
         bulletin_number = DB.db_read(query, schema)
         if bulletin_number:
