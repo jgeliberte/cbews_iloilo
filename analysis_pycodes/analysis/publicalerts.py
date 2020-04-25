@@ -225,33 +225,33 @@ def event_start(site_id, end):
     # previous positive alert
     prev_pub_alerts = qdb.get_db_dataframe(query)
 
-        if len(prev_pub_alerts) == 1:
-            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
-        # two previous positive alert
-        elif len(prev_pub_alerts) == 2:
-            # one event with two previous positive alert
-            if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
-                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
-                    timedelta(hours=0.5):
-                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
-            else:
-                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
-        # three previous positive alert
+    if len(prev_pub_alerts) == 1:
+        start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
+    # two previous positive alert
+    elif len(prev_pub_alerts) == 2:
+        # one event with two previous positive alert
+        if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
+                pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
+                timedelta(hours=0.5):
+            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
         else:
-            if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
-                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
-                    timedelta(hours=0.5):
-                # one event with three previous positive alert
-                if pd.to_datetime(prev_pub_alerts['ts'].values[1]) - \
-                        pd.to_datetime(prev_pub_alerts['ts_updated'].values[2]) \
-                        <= timedelta(hours=0.5):
-                    start_monitor = pd.to_datetime(prev_pub_alerts['ts']\
-                            .values[2])
-                # one event with two previous positive alert
-                else:
-                    start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
+            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
+    # three previous positive alert
+    else:
+        if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
+                pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
+                timedelta(hours=0.5):
+            # one event with three previous positive alert
+            if pd.to_datetime(prev_pub_alerts['ts'].values[1]) - \
+                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[2]) \
+                    <= timedelta(hours=0.5):
+                start_monitor = pd.to_datetime(prev_pub_alerts['ts']\
+                        .values[2])
+            # one event with two previous positive alert
             else:
-                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
+                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
+        else:
+            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
 
     return start_monitor
 
@@ -721,10 +721,6 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
         is_not_yet_write_time = not (is_release_time_run and is_45_minute_beyond)
         is_within_alert_extension = validity + timedelta(3) > end + timedelta(hours=0.5)
         has_no_ground_data = ground_alert == -1
-
-        var_checker("is_not_yet_write_time", is_not_yet_write_time)
-        var_checker("has_no_ground_data", has_no_ground_data)
-        var_checker("is_within_alert_extension", is_within_alert_extension)
         
         # check if end of validity: lower alert if with data and not rain75
         if validity > end + timedelta(hours=0.5):
