@@ -225,33 +225,33 @@ def event_start(site_id, end):
     # previous positive alert
     prev_pub_alerts = qdb.get_db_dataframe(query)
 
-    if len(prev_pub_alerts) == 1:
-        start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
-    # two previous positive alert
-    elif len(prev_pub_alerts) == 2:
-        # one event with two previous positive alert
-        if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
-                pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
-                timedelta(hours=0.5):
-            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
-        else:
+        if len(prev_pub_alerts) == 1:
             start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
-    # three previous positive alert
-    else:
-        if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
-                pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
-                timedelta(hours=0.5):
-            # one event with three previous positive alert
-            if pd.to_datetime(prev_pub_alerts['ts'].values[1]) - \
-                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[2]) \
-                    <= timedelta(hours=0.5):
-                start_monitor = pd.to_datetime(prev_pub_alerts['timestamp']\
-                        .values[2])
+        # two previous positive alert
+        elif len(prev_pub_alerts) == 2:
             # one event with two previous positive alert
-            else:
+            if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
+                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
+                    timedelta(hours=0.5):
                 start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
+            else:
+                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
+        # three previous positive alert
         else:
-            start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
+            if pd.to_datetime(prev_pub_alerts['ts'].values[0]) - \
+                    pd.to_datetime(prev_pub_alerts['ts_updated'].values[1]) <= \
+                    timedelta(hours=0.5):
+                # one event with three previous positive alert
+                if pd.to_datetime(prev_pub_alerts['ts'].values[1]) - \
+                        pd.to_datetime(prev_pub_alerts['ts_updated'].values[2]) \
+                        <= timedelta(hours=0.5):
+                    start_monitor = pd.to_datetime(prev_pub_alerts['ts']\
+                            .values[2])
+                # one event with two previous positive alert
+                else:
+                    start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[1])
+            else:
+                start_monitor = pd.to_datetime(prev_pub_alerts['ts'].values[0])
 
     return start_monitor
 

@@ -130,7 +130,6 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
         #########################
         # CHECK IF RELEASE TIME #
         #########################
-        is_release_time = False
         scheduled_release_time = h.round_to_nearest_release_time(candidate_ts)
         target_data_ts = scheduled_release_time - timedelta(minutes=30)
 
