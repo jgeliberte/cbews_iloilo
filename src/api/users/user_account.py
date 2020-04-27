@@ -11,7 +11,8 @@ def signin():
     username, password = credentials.values()
     account_details = Users.fetch_account(username)
     if len(account_details) != 0:
-        (user_id, account_id, privilege_id, profile_id, v_username, v_password, salt, firstname, lastname, site_id) = account_details[0]
+        print(account_details[0])
+        (user_id, account_id, privilege_id, profile_id, v_username, v_password, salt, firstname, lastname, site_id, site_code) = account_details[0]
         password_hashed = str(hashlib.sha512(str(password+salt).encode("utf-8")).hexdigest())
 
         if v_password == password_hashed:
@@ -24,6 +25,7 @@ def signin():
                     "privilege_id": privilege_id,
                     "profile_id": profile_id,
                     "site_id": site_id,
+                    "site_code": site_code,
                     "firstname": firstname,
                     "lastname": lastname
                 }

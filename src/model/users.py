@@ -108,8 +108,8 @@ class Users():
 	def fetch_account(username):
 		query = ('SELECT user_account.user_id, account_id, ' \
 		'privilege_id, profile_id, username, password, salt, first_name, ' \
-		'last_name, site_id FROM user_account INNER JOIN user_profile USING (user_id) ' \
-		'INNER JOIN users using (user_id) WHERE username = "%s"') % username
+		'last_name, site_id, site_code FROM user_account INNER JOIN user_profile USING (user_id) ' \
+		'INNER JOIN users using (user_id) INNER JOIN sites using(site_id) WHERE username = "%s"') % username
 		account = DB.db_read(query, 'commons_db')
 		return account
 
