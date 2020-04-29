@@ -63,7 +63,6 @@ class PublicAlertTable():
             length = len(update_dict.items())
             for index, item in enumerate(update_dict.items()):
                 value = item[1]
-                H.var_checker("value", value, True)
                 if isinstance(value, str) or isinstance(value, dt):
                     value = f"'{value}'"
                 query += f"{item[0]} = {value} "
@@ -76,8 +75,6 @@ class PublicAlertTable():
                 if index == 0:
                     sql = "WHERE "
                 query += f"{sql}{item[0]} = {item[1]} "
-
-            H.var_checker("update event query", query, True)
 
             schema = "senslopedb"
             result = DB.db_modify(query, schema, True)
@@ -103,12 +100,9 @@ class PublicAlertTable():
         query += f"'{release_time}', '{comments}', {bulletin_number}, "
         query += f"{reporter_id_mt}, {reporter_id_ct})"
 
-        H.var_checker("public_alert_release query", query, True)
-
         schema = "senslopedb"
         result = DB.db_modify(query, schema, True)
 
-        H.var_checker("public_alert_release result", result, True)
         if result:
             result = int(result)
 

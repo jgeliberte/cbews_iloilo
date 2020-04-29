@@ -213,7 +213,6 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
     """
     return_list = []
     extended_index = []
-    print("PASOK sa extended_release proc")
     for site in extended_sites:
         index = next((index for (index, d) in enumerate(no_alerts) if d["site_code"] == site["site_code"]), -1)
         if index > -1:
@@ -247,7 +246,6 @@ def prepare_sites_for_extended_release(extended_sites, no_alerts):
 def tag_sites_for_lowering(merged_list, no_alerts):
     """
     """
-    print("PASOK sa tag_sites_for_lowering proc")
     return_arr = []
     lowering_index = []
     for site in merged_list:
@@ -547,7 +545,6 @@ def process_with_alerts_entries(with_alerts, merged_list, invalids):
         invalids (list) - this is the list of invalid triggers from publicalerts.py
     """
     candidates_list = []
-    print("PASOK sa process_with_alerts_entries proc")
 
     for w_alert in with_alerts:
         entry = w_alert

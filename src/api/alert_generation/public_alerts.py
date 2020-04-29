@@ -361,7 +361,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
 
                 if run_ts <= validity:
                     active_events_dict["latest"].append(event_data)
-                    print("Seeing a latest")
                 elif validity < run_ts:
                     # if int(event_data["public_alert_level"]) > 0:
                     #     print("Seeing an overdue")
@@ -484,7 +483,6 @@ def save_triggers(ewi_data, event_id, release_id):
     This will update the validity as well. If ewi_validity is higher than saved validity,
     then update validity.
     """
-    print(ewi_data)
     release_triggers = ewi_data["release_triggers"]
     latest_trigger_id = None
     for trigger in release_triggers:
@@ -537,8 +535,6 @@ def insert_ewi(internal_ewi_data=None):
         else:
             ewi_data = request.get_json()
 
-        h.var_checker("FUCKING ewi_data", ewi_data)
-
         # Extract main necessary data
         site_id = ewi_data["site_id"]
         site_code = ewi_data["site_code"]
@@ -556,7 +552,6 @@ def insert_ewi(internal_ewi_data=None):
         }
 
         status = ewi_data["status"]
-        h.var_checker("FUCKING status", status)
         if status == "routine":
             for routine_entry in ewi_data["routine_list"]:
                 event_id = PAT.insert_public_alert_event(
@@ -592,9 +587,6 @@ def insert_ewi(internal_ewi_data=None):
                     pass
                     
             elif status in ["on-going", "extended", "invalid", "finished"]:
-                print()
-                print("PASOK SA MULTIPLE SHITS")
-                print()
                 event_id = ewi_data["event_id"]
 
                 event_validity = h.str_to_dt(AlertGeneration.get_public_alert_event_validity(event_id))
@@ -616,15 +608,11 @@ def insert_ewi(internal_ewi_data=None):
                     ewi_validity = h.str_to_dt(ewi_data["previous_validity"])
 
                 event_id = ewi_data["event_id"]
-                print()
-                print("LOWERING NA MGA SER")
-                print()
             
             release_dict["event_id"] = event_id
             release_list.append(release_dict)
         
-        for release_dict in release_list:
-            h.var_checker("release_dict", release_dict, True)
+        for release_dict in release_list:=
             release_id = PAT.insert_public_alert_release(
                 PAT,
                 event_id=release_dict["event_id"],
@@ -641,28 +629,17 @@ def insert_ewi(internal_ewi_data=None):
             if status == "routine":
                 event_id = release_dict["event_id"]
             elif status in ["new", "on-going"]:
-                print()
-                print("PASOK SA NEW-ONGOING SHITS")
-                print()
                 if "extend_ND" in ewi_data or "extend_rain_x" in ewi_data:
-                    print()
-                    print("PASOK SA extend_ND SHITS")
-                    print()
                     updated_validity = h.str_to_dt(event_validity) + timedelta(hours=4)
                     update_event_container.update({"validity": h.dt_to_str(updated_validity)})
                 else:
-                    print()
-                    print("HINDI PASOK SA extend_ND SHITS")
-                    print()
                     latest_trigger_id = save_triggers(ewi_data, event_id, release_id)
                     if latest_trigger_id:
                         update_event_container.update({ "latest_trigger_id": int(latest_trigger_id) })
 
                     new_validity = identify_validity(ewi_validity, event_validity)
                     update_event_container.update({ "validity": h.dt_to_str(new_validity) })
-        
-            h.var_checker("update_event_container", update_event_container, True)
-            # TODO: UDPATE EVENT HERE
+
             event_id = PAT.update_public_alert_event(PAT, update_event_container, {
                 "event_id": event_id
             })

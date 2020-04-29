@@ -68,7 +68,6 @@ class AlertGeneration():
     def fetch_alert_status(self, trigger_id):
         """
         """
-        print("FETCH ALERT STATUS")
         stat_row = None
         retun_dict = None
         query = "SELECT * FROM alert_status "
