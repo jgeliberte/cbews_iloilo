@@ -81,6 +81,52 @@ def add():
     return jsonify(od_data_return)
 
 
+@ON_DEMAND_BLUEPRINT.route("/ground_data/on_demand/raise", methods=["POST"])
+def raise_on_demand():
+    try:
+        print(request.get_json())
+        (site_id, timestamp) = request.get_json().values()
+
+        trigger_sym_id = AlertGen.get_operational_trigger_symbol(
+                                    trigger_source='on demand',
+                                    alert_level=1,
+                                    return_col="trigger_sym_id")
+
+        op_trig_data_dict = AlertGen.fetch_recent_operational_trigger(
+            AlertGen,
+            site_id=site_id,
+            trig_sym_id=trigger_sym_id
+        )
+        H.var_checker("op_trig_data_dict", op_trig_data_dict, True)
+
+        # If nothing exists in database:
+        if not op_trig_data_dict:
+            result = AlertGen.insert_operational_trigger(
+                site_id=site_id,
+                trig_sym_id=trigger_sym_id,
+                ts_updated=timestamp
+            )
+        # Else update especially ts in database:
+        else:
+            trigger_id = op_trig_data_dict["trigger_id"]
+            result = AlertGen.update_operational_trigger(
+                op_trig_id=trigger_id,
+                trig_sym_id=trigger_sym_id,
+                ts_updated=timestamp
+            )
+
+        od_data_return = {
+            "ok": True,
+            "message": "Successfully added new on demand data."
+        }
+    except Exception as err:
+        raise(err)
+        od_data_return = {
+            "ok": False,
+            "message": f"Failed to add OD data."
+        }
+    return jsonify(od_data_return)
+
 @ON_DEMAND_BLUEPRINT.route("/ground_data/moms/fetch/feature/<feature_id>/<site_id>", methods=["GET"])
 def fetch_feature(feature_id, site_id):
     try:

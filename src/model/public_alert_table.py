@@ -16,8 +16,6 @@ class PublicAlertTable():
         schema = "senslopedb"
         event = DB.db_read(query, schema)
 
-        H.var_checker("event", event, True)
-
         return_data = None
         if event:
             if return_col:
@@ -80,7 +78,6 @@ class PublicAlertTable():
             result = DB.db_modify(query, schema, True)
 
             if result:
-                H.var_checker("result", result, True)
                 result = result[0]
         except Exception as err:
             raise(err)
@@ -117,12 +114,9 @@ class PublicAlertTable():
         query += "(event_id, release_id, trigger_type, timestamp, info) "
         query += f"VALUES ({event_id}, {release_id}, '{trigger_type}', '{timestamp}', '{info}')"
 
-        H.var_checker("public_alert_trigger query", query, True)
-
         schema = "senslopedb"
         result = DB.db_modify(query, schema, True)
-
-        H.var_checker("public_alert_trigger result", result, True)
+    
         if result:
             pub_trigger_id = int(result)
 
@@ -139,7 +133,6 @@ class PublicAlertTable():
         bulletin_number = DB.db_read(query, schema)
         if bulletin_number:
             bulletin_number = int(bulletin_number[0][0])
-        H.var_checker("bulletin_number", bulletin_number, True)
 
         return bulletin_number
 
@@ -150,8 +143,6 @@ class PublicAlertTable():
         query = "UPDATE bulletin_tracker "
         query += f"SET bulletin_number = {bulletin_number} "
         query += f"WHERE site_id = {site_id}"
-
-        H.var_checker("update_bulletin_number query", query, True)
 
         schema = "senslopedb"
         result = DB.db_modify(query, schema, True)

@@ -60,6 +60,12 @@ def prepare_triggers(row):
         except KeyError:
             info = row["info"]["l2"]
         data_source = "dummy"
+    elif trigger_source == "on demand":
+        info = row["info"]
+        data_source = "Requested by authorities"
+    elif trigger_source == "on demand":
+        info = row["info"]
+        data_source = "Requested by authorities"
 
     row.update({
         "info": info,
@@ -272,6 +278,7 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
     ROU_EXT_RELEASE_TIME = 12
     release_interval_hours = 4
     extended_monitoring_days = 3
+    run_ts=dt.now()
 
     try:
         AG = AlertGeneration
@@ -327,10 +334,13 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                     # TODO: Create a model function checking for the corresponding 
                     # alert level of A1, A2, A3
                     public_alert_level = internal_alert[1]
-                elif internal_alert[0] == "N":
+                elif "ND-" in internal_alert:
                     public_alert_level = 1
+                elif internal_alert == "ND":
+                    public_alert_level = 0
                 else:
                     raise Exception("Unknown alert level in get ongoing fnx")
+
                 event_data["public_alert_level"] = public_alert_level
                 event_data["recommended_response"] = AG.get_public_alert_symbols_row(
                     alert_level=public_alert_level,
@@ -357,8 +367,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                 )
                 event_data["latest_event_triggers"] = get_unique_trigger_per_type(all_event_triggers)
 
-                h.var_checker("run_ts", run_ts)
-
                 if run_ts <= validity:
                     active_events_dict["latest"].append(event_data)
                 elif validity < run_ts:
@@ -370,7 +378,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                     print("Seeing an extended")
                     # Get Next Day 00:00
                     next_day = validity + timedelta(days=1)
-                    h.var_checker("extended next_day", next_day)
                     start = dt(next_day.year, next_day.month,
                                     next_day.day, 0, 0, 0)
                     # Day 3 is the 3rd 12-noon from validity
@@ -380,10 +387,6 @@ def get_ongoing_and_extended_monitoring(run_ts=dt.now(), source="fetch"):
                     # day 3 to know which extended day it is
                     difference = end - current
                     day = extended_monitoring_days - difference.days
-                    h.var_checker("extended start", start)
-                    h.var_checker("extended end", end)
-                    h.var_checker("extended current", current)
-                    h.var_checker("extended difference", difference)
                     print(day)
 
                     if day <= 0:
@@ -485,17 +488,22 @@ def save_triggers(ewi_data, event_id, release_id):
     """
     release_triggers = ewi_data["release_triggers"]
     latest_trigger_id = None
-    for trigger in release_triggers:
-        if trigger["is_invalid"] == False:
-            trigger_type = trigger["trigger_type"]
-            timestamp = trigger["timestamp"]
-            info = trigger["info"]
-            pat_trigger_id = PAT.insert_public_alert_trigger(PAT, event_id, release_id, trigger_type, timestamp, info)
-            latest_trigger_id = pat_trigger_id
-            print(f"Public alert trigger written with ID {pat_trigger_id}")
-        else:
-            print("invalid trigger... skipping.")
-    
+    try:
+        for trigger in release_triggers:
+            if trigger["is_invalid"] == False:
+                trigger_type = trigger["trigger_type"]
+                timestamp = trigger["timestamp"]
+                info = trigger["info"]
+                print(f"Inserting pat now...")
+                pat_trigger_id = PAT.insert_public_alert_trigger(PAT, event_id, release_id, trigger_type, timestamp, info)
+                latest_trigger_id = pat_trigger_id
+                print(f"Public alert trigger written with ID {pat_trigger_id}")
+            else:
+                print("invalid trigger... skipping.")
+
+    except Exception as err:
+        raise(err)
+
     return latest_trigger_id
 
 
@@ -606,13 +614,15 @@ def insert_ewi(internal_ewi_data=None):
                     ewi_validity = h.str_to_dt(ewi_data["validity"])
                 except TypeError:
                     ewi_validity = h.str_to_dt(ewi_data["previous_validity"])
+                except ValueError:
+                    ewi_validity = h.str_to_dt(ewi_data["previous_validity"])
 
                 event_id = ewi_data["event_id"]
             
             release_dict["event_id"] = event_id
             release_list.append(release_dict)
         
-        for release_dict in release_list:=
+        for release_dict in release_list:
             release_id = PAT.insert_public_alert_release(
                 PAT,
                 event_id=release_dict["event_id"],
