@@ -342,7 +342,7 @@ class AlertGeneration():
         query = f"SELECT {select_option} FROM public_alert_symbols WHERE "
 
         # Either you give level or symbol. Pretty obvious one.
-        if alert_level:
+        if alert_level != None:
             query = f"{query} alert_level = {alert_level}"
         elif alert_symbol:
             query = f"{query} alert_symbol = {alert_symbol}"

@@ -46,7 +46,8 @@ def format_release_triggers(candidate, all_event_triggers):
                     "trigger_id": trigger["trigger_id"],
                     "ots_symbol": ots_symbol,
                     "trigger_source": trigger_source,
-                    "is_invalid": trigger["is_invalid"]
+                    "is_invalid": trigger["is_invalid"],
+                    "has_alert_status": trigger["has_alert_status"]
                 }
                 new_trigger_list.append(trigger_payload)
     except Exception as err:
@@ -80,6 +81,7 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
         site_db_alert = next(filter(lambda x: x["site_code"] == site_code, ongoing_db_alerts), None)
         
         # If site_code is already in active events:
+        site_db_validity = None
         if site_db_alert:
             site_db_pub_al_lvl = int(site_db_alert["public_alert_level"])
             site_db_data_ts = h.str_to_dt(site_db_alert["data_ts"])
@@ -89,13 +91,11 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
             is_new_release = True if site_db_data_ts < candidate_ts else False
 
             if internal_alert in ["A0", "ND"]:
-                h.var_checker("INTERNAL ALERT AY A0 / ND NA", "")
                 if (candidate_ts + timedelta(hours=0.5)) < site_db_validity:
                     candidate_status = "invalid"
                 else:
                     candidate_status = "extended"
             else:
-                h.var_checker("INTERNAL ALERT AY ONGOING PARIN", "")
                 candidate_status = "on-going"
             
             previous_event_id = site_db_alert["event_id"]
@@ -157,7 +157,9 @@ def finalize_candidates_before_release(candidate_alerts_list, latest_events, ove
                 else:
                     internal += "Rx"
 
-        if candidate["has_no_ground_data"] and candidate["public_alert_level"] == 1 and site_db_alert:
+        is_end_of_validity = candidate_ts + timedelta(hours=0.5) == site_db_validity
+
+        if candidate["has_no_ground_data"] and candidate["public_alert_level"] > 0 and site_db_alert and is_end_of_validity:
             candidate["extend_ND"] = True
 
         # NOTE: LOUIE Study more on this code
@@ -465,6 +467,7 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
     entry["status"] = "on-going"
     invalid_list = []
     invalid_symbols_list = []
+    invalid_trigger_ids_list = []
     for invalid_trigger in site_invalid_trigs_list:
         trig_alert_level = invalid_trigger["alert_level"]
         trigger_source = invalid_trigger["trigger_source"]
@@ -480,6 +483,7 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
                 if symbol not in current_entry_source: # not yet released
                     if symbol in candidate_entry_source:
                         invalid_list.append(invalid_trigger)
+                        invalid_trigger_ids_list.append(invalid_trigger["trigger_id"])
                         invalid_symbols_list.append(symbol)
                         entry["status"] = "invalid"
                         candidate_entry_source = candidate_entry_source.replace(symbol, "")
@@ -523,6 +527,19 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
         # status = "routine"
         # if is_ongoing_event:
         #     status = "on-going"
+
+    # TODO: Confirm validity adjustment logic from Meryll. Which ts is the basis for extension of validity?
+    if entry["validity"] > site_db_alert["validity"]:
+        # If the entry proposes a new validity, check if there are any invalid triggers.
+        if site_invalid_trigs_list:
+            # if there are any invalid triggers, GENERATE new validity
+            valid_triggers = list(filter(lambda x: x["trigger_id"] not in invalid_trigger_ids_list, entry["triggers"]))
+            
+            sorted_v_trigs = sorted(valid_triggers, key=lambda x: x["ts"], reverse=True)
+            if sorted_v_trigs:
+                latest_ts = sorted_v_trigs[0]["ts"]
+                validity = latest_ts + timedelta(1)
+                
 
     entry.update({
         "public_alert": public_alert,

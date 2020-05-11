@@ -60,7 +60,7 @@ def release_time(date_time):
         else:
             date_time = datetime.combine(date_time.date() + timedelta(1), time(0, 0))
     except Exception as err:
-        print(err)
+        print(err + "1 1")
         raise
 
     return date_time
@@ -705,10 +705,11 @@ def site_public_alert(site_props, end, public_symbols, internal_symbols,
         internal_alert = pub_internal + hyphen + internal_alert
     elif -1 in internal_df[internal_df.trigger_source != 'rainfall']['alert_level'].values:
         ground_alert = -1
-    elif has_unresolved_moms:
-        ground_alert = -1
     else:
         ground_alert = 0
+
+    if has_unresolved_moms:
+        ground_alert = -1
 
     # PUBLIC ALERT
     # check if end of validity: lower alert if with data and not rain75

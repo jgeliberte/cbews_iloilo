@@ -3,7 +3,7 @@ from pprint import pprint
 import os
 import pandas as pd
 import sys
-from publicalerts_copy import release_time, var_checker, get_moms_feature_types
+from publicalerts import release_time, var_checker, get_moms_feature_types
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import querydb as qdb
@@ -84,17 +84,23 @@ def query_moms_alerts(site_id, latest_trigger_ts):
     
 def query_od_alerts(site_id, latest_trigger_ts):
         query = "SELECT * FROM senslopedb.public_alert_on_demand as paod " + \
-            f"WHERE site.site_id = '{site_id}'"
+            f"WHERE site_id = {site_id} and ts = '{latest_trigger_ts}'"
 
         result = qdb.get_db_dataframe(query)
+
+        if not result.empty:
+            result = result.to_dict('records')[0]
         
         return result
     
 def query_eq_alerts(site_id, latest_trigger_ts):
         query = "SELECT * FROM senslopedb.earthquake_events " + \
-            f"WHERE site.site_id = '{site_id}'"
+            f"WHERE site_id = {site_id} and ts = '{latest_trigger_ts}'"
 
         result = qdb.get_db_dataframe(query)
+
+        if not result.empty:
+            result = result.to_dict('records')[0]
         
         return result
 
@@ -287,7 +293,7 @@ def get_od_tech_info(site_id, latest_trigger_ts):
 
         reason = alert_detail["reason"]
         reporter = alert_detail["reporter"]
-        od_tech_info = f"{reporter} requested on-demand monitoring for the following reason: '{reason}'"
+        od_tech_info = f"{reporter} requested on-demand monitoring for the following reason: {reason}"
 
         return od_tech_info
     
@@ -329,7 +335,7 @@ def main(trigger_df):
         elif trigger_source == 'moms':
             technical_info['moms'] = get_moms_tech_info(site_id, latest_trigger_ts)
         elif trigger_source == 'on demand':
-            technical_info['on_demand'] = get_od_tech_info(site_id, latest_trigger_ts)
+            technical_info['on demand'] = get_od_tech_info(site_id, latest_trigger_ts)
         elif trigger_source == 'earthquake':
             # technical_info['earthquake'] = get_eq_tech_info(site_id, latest_trigger_ts)
             technical_info['earthquake'] = "This is a dummy earthquake info"
