@@ -538,8 +538,14 @@ def fix_internal_alert_invalids(entry, invalid_triggers_list, merged_list):
             sorted_v_trigs = sorted(valid_triggers, key=lambda x: x["ts"], reverse=True)
             if sorted_v_trigs:
                 latest_ts = sorted_v_trigs[0]["ts"]
-                validity = latest_ts + timedelta(1)
+                mod_validity = latest_ts + timedelta(1)
+
+                if candidate_alert_level == 3:
+                    mod_validity = mod_validity + timedelta(1)
                 
+                entry.update({
+                    "validity": mod_validity
+                })
 
     entry.update({
         "public_alert": public_alert,
